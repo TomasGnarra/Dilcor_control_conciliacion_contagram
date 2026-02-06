@@ -93,22 +93,26 @@ El operador solo necesita:
 
 ### Slide 7: Dashboard de Impacto Financiero
 
-El dashboard muestra 8 KPIs clave:
+El dashboard se organiza en **dos bloques**:
 
-**Fila 1 - Cobranzas:**
+**Bloque 1: COBROS (Creditos / Ventas)**
 | KPI | Que muestra |
 |-----|------------|
 | Cobrado en Bancos | Total de plata que entro por los 3 bancos |
 | Facturado en Contagram | Total de facturas pendientes en el ERP |
 | Revenue Gap | Diferencia entre cobrado y facturado. Ideal = $0 |
+| Desglose por nivel | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar (cantidad + monto) |
+| Diferencias de cambio | A favor (+) vs en contra (-) de Dilcor |
 
-**Fila 2 - Operativo:**
+**Bloque 2: PAGOS A PROVEEDORES (Debitos)**
 | KPI | Que muestra |
 |-----|------------|
-| Pagos a Proveedores | Total pagado a proveedores |
-| Gastos Bancarios | Comisiones e impuestos bancarios |
-| Diferencias de Cambio | Cuanto se cobro de mas (+) vs de menos (-) |
-| Dinero sin Conciliar | Plata en el banco que no sabemos de quien es |
+| Pagado en Bancos | Total pagado a proveedores |
+| OCs en Contagram | Ordenes de compra registradas |
+| Payment Gap | Diferencia entre pagado y OCs |
+| Desglose por nivel | Idem cobros, para pagos a proveedores |
+
+**Gastos Bancarios:** Barra informativa con comisiones e impuestos (no va a Contagram)
 
 ---
 

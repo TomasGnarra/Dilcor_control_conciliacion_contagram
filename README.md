@@ -63,37 +63,46 @@ Los archivos descargados se importan en los modulos de Contagram:
 
 ## Que muestra el Dashboard?
 
-### Seccion 1: Niveles de Match (fila de arriba)
+### Resumen General (fila superior)
 
-El sistema clasifica cada movimiento bancario en 4 niveles:
+5 tarjetas con los numeros clave: Total Movimientos, % Conciliacion Total, Match Exacto, Requieren Revision, Sin Identificar.
+
+### 4 Niveles de Match
 
 | Nivel | Que significa | Color |
 |-------|--------------|-------|
 | **Match Exacto** | Se identifico al cliente/proveedor Y el monto coincide con una factura especifica | Verde |
-| **Probable - Duda de ID** | El nombre es parecido pero no identico (ej: "PRITTY" vs "PRITY"). Requiere que alguien confirme si es el mismo cliente | Amarillo |
-| **Probable - Dif. de Cambio** | El cliente/proveedor esta identificado, pero el monto del banco no coincide exactamente con ninguna factura individual. Puede ser un pago que cubre varias facturas, un pago parcial, o una diferencia de redondeo | Naranja |
-| **No Match** | El sistema no pudo identificar de quien es el movimiento. Hay que revisar manualmente | Rojo |
+| **Probable - Duda de ID** | El nombre es parecido pero no identico (ej: "PRITTY" vs "PRITY"). Requiere confirmar si es el mismo cliente | Amarillo |
+| **Probable - Dif. de Cambio** | El cliente/proveedor esta identificado, pero el monto no coincide con ninguna factura individual. Puede ser un pago que cubre varias facturas, un pago parcial, o redondeo | Naranja |
+| **No Match** | No se pudo identificar de quien es el movimiento. Revisar manualmente | Rojo |
 
-**Ejemplo practico:**
-- PRITTY transfiere $500,000 por banco. En Contagram, PRITTY tiene 3 facturas: $200K, $180K, $120K.
-- El sistema identifica que es PRITTY (match de identidad exacto), pero $500K no coincide con ninguna factura individual.
-- Resultado: **Probable - Dif. de Cambio**. El contador sabe que es de PRITTY, pero debe revisar contra que facturas se aplica.
+### Bloque 1: COBROS (Creditos / Ventas)
 
-### Seccion 2: Impacto Financiero (fila de abajo)
+Header negro. Muestra todo lo relacionado con dinero que **entra** al banco (cobranzas de clientes):
 
-| KPI | Que muestra | Como se lee |
-|-----|------------|-------------|
-| **Cobrado en Bancos** | Suma total de creditos (dinero que entro) en los 3 bancos | Es lo que efectivamente se cobro |
-| **Facturado en Contagram** | Suma total de las ventas pendientes cargadas en Contagram | Es lo que se esperaba cobrar segun las facturas |
-| **Revenue Gap (Banco - Contagram)** | La diferencia entre lo cobrado y lo facturado. Idealmente es $0. Si es negativo, se facturo mas de lo que entro. Si es positivo, entro mas de lo facturado | Un gap chico (ej: -$260) es normal por redondeos. Un gap grande indica facturas no cobradas o cobros sin factura |
-| **Pagos a Proveedores** | Total de debitos clasificados como pagos a proveedores | Dinero que salio para pagar a Coca Cola, Quilmes, etc. |
-| **Gastos Bancarios** | Total de comisiones, impuestos y cargos bancarios | Costo del sistema bancario (mantenimiento, IVA, comisiones MP) |
-| **Diferencias de Cambio (neto)** | Suma neta de las diferencias de monto en los matches "probable_dif_cambio". Muestra "+X / -Y" donde X = cobros de mas, Y = cobros de menos | Si es muy negativo, hay varios clientes pagando menos de lo facturado. Sirve para detectar perdidas |
-| **Dinero sin Conciliar** | Monto total de los movimientos "no match" | Plata en el banco que no sabemos de quien es. Requiere revision urgente |
+| Fila | KPIs | Que muestra |
+|------|------|-------------|
+| **Montos principales** | Cobrado en Bancos, Facturado en Contagram, Revenue Gap | Cuanto entro, cuanto se esperaba, y la diferencia. Revenue Gap ideal = $0 |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad de movimientos y monto en cada nivel. Permite ver cuanto dinero esta bien conciliado vs requiere revision |
+| **Diferencias** | Dif. Cambio neto, A favor, En contra | Cuanto pagaron clientes de mas (+) vs de menos (-). Sirve para detectar perdidas |
 
-### Seccion 3: Desglose por Banco
+### Bloque 2: PAGOS A PROVEEDORES (Debitos)
 
-Tabla que muestra la distribucion de matches por cada banco. Util para ver si un banco tiene mas problemas que otros (ej: Mercado Pago suele tener mas excepciones por los alias como "MERPAG*").
+Header verde. Muestra todo lo relacionado con dinero que **sale** del banco (pagos a proveedores):
+
+| Fila | KPIs | Que muestra |
+|------|------|-------------|
+| **Montos principales** | Pagado en Bancos, OCs en Contagram, Payment Gap | Cuanto se pago, cuanto habia en ordenes de compra, y la diferencia |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto por nivel para pagos a proveedores |
+| **Diferencias** | Dif. Cambio neto, Pagaste de menos, Pagaste de mas | Diferencias entre lo pagado y las OCs registradas |
+
+### Gastos Bancarios
+
+Barra informativa al final: total de comisiones, impuestos y mantenimiento de cuenta. No va a Contagram.
+
+### Desglose por Banco
+
+Tabla expandible por banco (Galicia, Santander, Mercado Pago) con la distribucion de matches de cada uno.
 
 ---
 

@@ -124,26 +124,37 @@ El motor de conciliacion clasifica cada movimiento bancario en uno de 4 niveles.
 
 ---
 
-## 5. KPIs de Impacto Financiero - Que muestran?
+## 5. Dashboard de Impacto Financiero - Que muestra?
 
-El dashboard incluye una seccion de "Impacto Financiero" con 8 indicadores clave. Aca se explica cada uno:
+El dashboard esta organizado en **dos bloques** que separan el flujo de dinero:
 
-### Fila superior (Cobranzas)
+### Bloque 1: COBROS (Creditos / Ventas)
 
-| KPI | Que muestra | Como se lee |
-|-----|------------|-------------|
-| **Cobrado en Bancos** | Suma total del dinero que entro por los 3 bancos (solo creditos clasificados como cobranzas) | Es lo que efectivamente se cobro en el periodo. En diciembre: $576.474.310,88 |
-| **Facturado en Contagram** | Suma total de las ventas pendientes que figuran en el ERP | Es lo que se esperaba cobrar segun las facturas emitidas. En diciembre: $576.474.570,80 |
-| **Revenue Gap** | La resta: Cobrado - Facturado. Mide si la plata que entro al banco coincide con lo que se facturo | En diciembre: -$259,92 (es decir, se facturo $260 mas de lo que entro al banco). Un numero cercano a $0 es ideal. Si el gap es muy grande, indica facturas emitidas pero no cobradas, o cobros que no tienen factura asociada |
-
-### Fila inferior (Operativo)
+Todo lo relacionado con dinero que **entra** al banco por cobranzas de clientes.
 
 | KPI | Que muestra | Como se lee |
 |-----|------------|-------------|
-| **Pagos a Proveedores** | Total de dinero que salio de los bancos hacia proveedores (Coca Cola, Quilmes, etc.) | En diciembre: $170.350.000 en 26 pagos |
-| **Gastos Bancarios** | Total de comisiones, mantenimiento de cuenta, IVA comisiones, impuestos bancarios | En diciembre: $1.236.860 en 16 movimientos. Es el costo de operar con los bancos |
-| **Diferencias de Cambio (neto)** | Suma neta de todas las diferencias de monto detectadas en los matches tipo "dif. de cambio". Muestra un desglose +X / -Y | +X = clientes que pagaron de mas (a favor de Dilcor). -Y = clientes que pagaron de menos (en contra). El neto indica si Dilcor esta cobrando mas o menos de lo facturado |
-| **Dinero sin Conciliar** | Monto total de los movimientos "no match" (excepciones) | Es plata que esta en el banco pero no sabemos de quien es. Requiere revision urgente. En diciembre: $58.052.194 en 28 movimientos |
+| **Cobrado en Bancos** | Suma total del dinero que entro por los 3 bancos | Es lo que efectivamente se cobro. En diciembre: $576.474.310 |
+| **Facturado en Contagram** | Suma total de ventas pendientes en el ERP | Lo que se esperaba cobrar segun facturas. En diciembre: $576.474.570 |
+| **Revenue Gap** | Cobrado - Facturado | -$260 en diciembre (casi perfecto). Un gap grande indica facturas no cobradas o cobros sin factura |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto en cada nivel. Muestra cuanto dinero esta bien conciliado y cuanto requiere revision |
+| **Diferencias de cambio** | A favor (+) y en contra (-) de Dilcor | Clientes que pagaron de mas vs de menos. Sirve para detectar perdidas sistematicas |
+
+### Bloque 2: PAGOS A PROVEEDORES (Debitos)
+
+Todo lo relacionado con dinero que **sale** del banco hacia proveedores.
+
+| KPI | Que muestra | Como se lee |
+|-----|------------|-------------|
+| **Pagado en Bancos** | Total pagado a proveedores | En diciembre: $170.350.000 en 26 pagos |
+| **OCs en Contagram** | Total de ordenes de compra registradas en el ERP | Es lo que se esperaba pagar segun las OCs |
+| **Payment Gap** | Pagado - OCs | Diferencia entre lo que se pago y lo que habia en ordenes de compra |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cuantos pagos se identificaron bien y cuantos requieren revision |
+| **Diferencias** | Pagaste de menos (+) / Pagaste de mas (-) | Detecta si se esta pagando mas o menos de lo acordado con proveedores |
+
+### Gastos Bancarios
+
+Barra informativa con el total de comisiones, impuestos y mantenimiento de cuenta. En diciembre: $1.236.860 en 16 movimientos. No se importa a Contagram, es solo informativo para conocer el costo bancario.
 
 ---
 
