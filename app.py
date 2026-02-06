@@ -447,19 +447,39 @@ if data_ready:
 
         with col_db:
             st.markdown("### Guardar en Base de Datos")
-            if st.button("Guardar en TiDB Cloud", use_container_width=True):
-                try:
-                    from src.db_connector import guardar_conciliacion
-                    secrets = st.secrets["tidb"]
-                    with st.spinner("Guardando en TiDB Cloud..."):
-                        res = guardar_conciliacion(resultado["resultados"], secrets)
-                    if res["status"] == "ok":
-                        st.success(f"Guardado: {res['registros_insertados']} registros en TiDB Cloud")
-                    else:
-                        st.error(f"Error: {res['mensaje']}")
-                except Exception as e:
-                    st.warning(f"TiDB no disponible: {e}")
-                    st.info("Los resultados estan disponibles para descarga en las pestanas anteriores.")
+
+            # Verificar si secrets de TiDB estan configurados
+            tidb_configurado = False
+            try:
+                _ = st.secrets["tidb"]
+                tidb_configurado = True
+            except Exception:
+                pass
+
+            if not tidb_configurado:
+                st.info("Para habilitar persistencia en TiDB Cloud, crear el archivo `.streamlit/secrets.toml` con:")
+                st.code("""[tidb]
+host = "gateway01.us-east-1.prod.aws.tidbcloud.com"
+port = 4000
+user = "TU_USUARIO"
+password = "TU_PASSWORD"
+database = "test"
+""", language="toml")
+                st.caption("Luego reiniciar Streamlit (Ctrl+C y volver a ejecutar `streamlit run app.py`)")
+            else:
+                if st.button("Guardar en TiDB Cloud", use_container_width=True):
+                    try:
+                        from src.db_connector import guardar_conciliacion
+                        secrets = st.secrets["tidb"]
+                        with st.spinner("Guardando en TiDB Cloud..."):
+                            res = guardar_conciliacion(resultado["resultados"], secrets)
+                        if res["status"] == "ok":
+                            st.success(f"Guardado: {res['registros_insertados']} registros en TiDB Cloud")
+                        else:
+                            st.error(f"Error TiDB: {res['mensaje']}")
+                    except Exception as e:
+                        st.error(f"Error de conexion: {e}")
+                        st.info("Verificar credenciales en `.streamlit/secrets.toml`")
 
         with col_steps:
             st.markdown("### Pasos Siguientes")
