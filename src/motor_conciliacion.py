@@ -92,10 +92,35 @@ class MotorConciliacion:
             nm = subset[subset["match_nivel"] == "no_match"]
 
             conciliados = len(me) + len(di) + len(dc)
+
+            # Desglose match exacto: directo (1:1) vs suma
+            has_tipo = "tipo_match_monto" in subset.columns
+            if has_tipo and not me.empty:
+                me_directo = me[me["tipo_match_monto"] == "directo"]
+                me_suma = me[me["tipo_match_monto"].isin(["suma_total", "suma_parcial"])]
+            else:
+                me_directo = me
+                me_suma = me.iloc[0:0]  # empty
+
+            # Cobrado/pagado de mas y de menos (solo match_exacto con diferencia)
+            de_mas = 0.0
+            de_menos = 0.0
+            if not me.empty and "diferencia_monto" in me.columns:
+                for _, r in me.iterrows():
+                    dif = r.get("diferencia_monto", 0) or 0
+                    if dif > 0:
+                        de_mas += dif
+                    elif dif < 0:
+                        de_menos += abs(dif)
+
             return {
                 "total": n,
                 "match_exacto": len(me),
                 "match_exacto_monto": round(me["monto"].sum(), 2) if not me.empty else 0,
+                "match_directo": len(me_directo),
+                "match_directo_monto": round(me_directo["monto"].sum(), 2) if not me_directo.empty else 0,
+                "match_suma": len(me_suma),
+                "match_suma_monto": round(me_suma["monto"].sum(), 2) if not me_suma.empty else 0,
                 "probable_duda_id": len(di),
                 "probable_duda_id_monto": round(di["monto"].sum(), 2) if not di.empty else 0,
                 "probable_dif_cambio": len(dc),
@@ -106,6 +131,9 @@ class MotorConciliacion:
                 "tasa_conciliacion": round(conciliados / max(n, 1) * 100, 1),
                 "monto_total": round(subset["monto"].sum(), 2),
                 "monto_conciliado": round((me["monto"].sum() + di["monto"].sum() + dc["monto"].sum()), 2) if conciliados > 0 else 0,
+                "de_mas": round(de_mas, 2),
+                "de_menos": round(de_menos, 2),
+                "diferencia_neta": round(de_mas - de_menos, 2),
             }
 
         cobros_stats = _desglose(cobranzas)
@@ -192,6 +220,8 @@ class MotorConciliacion:
             "CUIT": cobranzas.get("cuit", ""),
             "Monto Cobrado": cobranzas["monto"],
             "Factura Asociada": cobranzas.get("factura_match", ""),
+            "Tipo Match": cobranzas.get("tipo_match_monto", "").fillna("—"),
+            "Cant Facturas": cobranzas.get("facturas_count", 0).fillna(0).astype(int),
             "Banco Origen": cobranzas["banco"],
             "Referencia Banco": cobranzas["referencia"],
             "Nivel Match": cobranzas["match_nivel"],
@@ -217,6 +247,8 @@ class MotorConciliacion:
             "CUIT": pagos.get("cuit", ""),
             "Monto Pagado": pagos["monto"],
             "OC Asociada": pagos.get("factura_match", ""),
+            "Tipo Match": pagos.get("tipo_match_monto", "").fillna("—"),
+            "Cant Facturas": pagos.get("facturas_count", 0).fillna(0).astype(int),
             "Banco": pagos["banco"],
             "Referencia Banco": pagos["referencia"],
             "Nivel Match": pagos["match_nivel"],

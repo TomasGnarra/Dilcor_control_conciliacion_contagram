@@ -101,8 +101,9 @@ El dashboard se organiza en **dos bloques**:
 | Cobrado en Bancos | Total de plata que entro por los 3 bancos |
 | Facturado en Contagram | Total de facturas pendientes en el ERP |
 | Revenue Gap | Diferencia entre cobrado y facturado. Ideal = $0 |
-| Desglose por nivel | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar (cantidad + monto) |
+| Desglose por nivel | Match Exacto (X directo + Y suma) / Duda ID / Dif. Cambio / Sin Identificar |
 | Resumen de flujo | Conciliado 100% / Identificado, asignar facturas / Sin identificar (porcentaje) |
+| Tipo match + Diferencias | Match directo / Match por suma / Cobrado de mas / Cobrado de menos |
 
 **Bloque 2: PAGOS A PROVEEDORES (Debitos)**
 | KPI | Que muestra |
@@ -110,7 +111,8 @@ El dashboard se organiza en **dos bloques**:
 | Pagado en Bancos | Total pagado a proveedores |
 | OCs en Contagram | Ordenes de compra registradas |
 | Payment Gap | Diferencia entre pagado y OCs |
-| Desglose por nivel | Idem cobros, para pagos a proveedores |
+| Desglose por nivel | Idem cobros, para pagos a proveedores (1:1 vs suma) |
+| Tipo match + Diferencias | Match directo / Match por suma / Pagado de mas / Pagado de menos |
 
 **Gastos Bancarios:** Barra informativa con comisiones e impuestos (no va a Contagram)
 
