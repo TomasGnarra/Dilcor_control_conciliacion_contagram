@@ -7,3 +7,9 @@ build/
 
 # Streamlit secrets (credentials - NEVER commit)
 .streamlit/secrets.toml
+
+# VS Code settings (local/personal)
+.vscode/
+
+# Windows reserved names (ghost files)
+nul
