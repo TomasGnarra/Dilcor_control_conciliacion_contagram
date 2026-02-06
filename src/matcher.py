@@ -1,10 +1,37 @@
 """
 Motor de matching - Cruza movimientos bancarios contra datos de Contagram.
-Implementa 3 niveles: Automático, Probable, Excepción.
+Implementa lógica ternaria:
+  - Match Exacto: ID exacto + monto dentro de tolerancia
+  - Match Probable (A - Duda de ID): Monto coincide pero alias es fuzzy
+  - Match Probable (B - Diferencia de Cambio): ID exacto pero monto difiere
+  - No Match: Sin coincidencia
+
+Umbrales configurables vía diccionario MATCH_CONFIG.
 """
 import pandas as pd
 import re
 from difflib import SequenceMatcher
+
+
+# ─── UMBRALES CONFIGURABLES ─────────────────────────────────────────
+# Estos valores se pueden sobreescribir desde Streamlit (sidebar)
+MATCH_CONFIG = {
+    # Umbral mínimo de similitud de alias para considerar match exacto de ID
+    "umbral_id_exacto": 0.80,
+    # Umbral mínimo de similitud de alias para match probable (duda de ID)
+    "umbral_id_probable": 0.55,
+    # Tolerancia de monto para match exacto (porcentaje, ej: 0.005 = 0.5%)
+    "tolerancia_monto_exacto_pct": 0.005,
+    # Tolerancia de monto para match probable - diferencia de cambio (porcentaje)
+    "tolerancia_monto_probable_pct": 0.01,
+    # Tolerancia de monto absoluta para match probable (en pesos ARS)
+    "tolerancia_monto_probable_abs": 500.0,
+}
+
+
+def get_config(key: str) -> float:
+    """Obtiene valor de config. Permite override en runtime."""
+    return MATCH_CONFIG.get(key, 0)
 
 
 def _similitud(a: str, b: str) -> float:
@@ -21,7 +48,6 @@ def _similitud(a: str, b: str) -> float:
 def _extraer_nombre_banco(descripcion: str) -> str:
     """Extrae el nombre relevante de una descripción bancaria."""
     desc = descripcion.upper().strip()
-    # Remover prefijos comunes
     prefijos = [
         "MERPAG\\*", "MP\\*", "MERCPAGO\\*", "MERPAGO ",
         "TRANSF ", "TRF CR ", "ACRED\\.TRANSF ", "CR\\.TRANSF ",
@@ -30,9 +56,65 @@ def _extraer_nombre_banco(descripcion: str) -> str:
     ]
     for p in prefijos:
         desc = re.sub(f"^{p}", "", desc)
-    # Remover sufijos
     desc = re.sub(r"\s*-RET$", "", desc)
     return desc.strip()
+
+
+def _match_identidad(desc: str, desc_orig: str, nombre_banco: str,
+                     alias_limpio: str, nombre: str) -> tuple[float, str]:
+    """
+    Evalúa match de identidad (alias/nombre).
+    Returns: (score, tipo_match_id)
+        tipo_match_id: 'exacto', 'fuzzy', 'none'
+    """
+    # Match exacto: alias aparece como substring en descripción
+    if alias_limpio and (alias_limpio in desc or alias_limpio in desc_orig.upper()):
+        return 0.95, "exacto"
+    if nombre and (nombre in desc or nombre in desc_orig.upper()):
+        return 0.90, "exacto"
+
+    # Fuzzy match
+    score_alias = _similitud(nombre_banco, alias_limpio)
+    score_nombre = _similitud(nombre_banco, nombre)
+    score = max(score_alias, score_nombre)
+
+    # Boost por overlap parcial significativo
+    if nombre_banco and len(nombre_banco) > 3:
+        for word in nombre_banco.split():
+            if len(word) > 3 and word in nombre:
+                score = max(score, 0.85)
+                break
+
+    if score >= get_config("umbral_id_exacto"):
+        return score, "exacto"
+    elif score >= get_config("umbral_id_probable"):
+        return score, "fuzzy"
+    else:
+        return score, "none"
+
+
+def _match_monto(monto_banco: float, monto_factura: float) -> tuple[str, float, float]:
+    """
+    Evalúa match de monto.
+    Returns: (tipo_match_monto, diferencia_abs, diferencia_pct)
+        tipo_match_monto: 'exacto', 'probable', 'no_match'
+    """
+    if monto_factura == 0:
+        return "no_match", abs(monto_banco), 100.0
+
+    diff_abs = abs(monto_banco - monto_factura)
+    diff_pct = diff_abs / monto_factura
+
+    tol_exacto = get_config("tolerancia_monto_exacto_pct")
+    tol_prob_pct = get_config("tolerancia_monto_probable_pct")
+    tol_prob_abs = get_config("tolerancia_monto_probable_abs")
+
+    if diff_pct <= tol_exacto:
+        return "exacto", diff_abs, diff_pct
+    elif diff_pct <= tol_prob_pct or diff_abs <= tol_prob_abs:
+        return "probable", diff_abs, diff_pct
+    else:
+        return "no_match", diff_abs, diff_pct
 
 
 def match_por_tabla_parametrica(
@@ -41,14 +123,12 @@ def match_por_tabla_parametrica(
 ) -> dict:
     """
     Intenta matchear un movimiento usando la tabla paramétrica.
-    Returns dict con resultado del match.
     """
     desc = str(movimiento.get("descripcion_normalizada", ""))
     desc_orig = str(movimiento.get("descripcion", ""))
     monto = movimiento.get("monto", 0)
     clasificacion = movimiento.get("clasificacion", "")
 
-    # Filtrar tabla por tipo
     if clasificacion == "cobranza":
         filtro = tabla_param[tabla_param["tipo"] == "Cliente"]
     elif clasificacion == "pago_proveedor":
@@ -58,6 +138,7 @@ def match_por_tabla_parametrica(
 
     best_match = None
     best_score = 0
+    best_tipo_id = "none"
 
     nombre_banco = _extraer_nombre_banco(desc_orig)
 
@@ -66,50 +147,33 @@ def match_por_tabla_parametrica(
         nombre = str(param.get("nombre_contagram", "")).upper()
         alias_limpio = _extraer_nombre_banco(alias)
 
-        # Score por alias en descripción normalizada o original
-        if alias_limpio and (alias_limpio in desc or alias_limpio in desc_orig.upper()):
-            score = 0.95
-        elif nombre and (nombre in desc or nombre in desc_orig.upper()):
-            score = 0.90
-        else:
-            # Similitud fuzzy contra nombre extraído del banco
-            score_alias = _similitud(nombre_banco, alias_limpio)
-            score_nombre = _similitud(nombre_banco, nombre)
-            score = max(score_alias, score_nombre)
-            # Boost si hay overlap parcial significativo
-            if nombre_banco and len(nombre_banco) > 3:
-                for word in nombre_banco.split():
-                    if len(word) > 3 and word in nombre:
-                        score = max(score, 0.85)
-                        break
+        score, tipo_id = _match_identidad(desc, desc_orig, nombre_banco,
+                                          alias_limpio, nombre)
 
         if score > best_score:
             best_score = score
             best_match = param
+            best_tipo_id = tipo_id
 
-    if best_match is None:
+    if best_match is None or best_tipo_id == "none":
         return {
-            "match_nivel": "excepcion",
+            "match_nivel": "no_match",
+            "match_detalle": "Sin coincidencia en tabla parametrica",
             "confianza": 0,
             "entidad_match": None,
             "id_contagram": None,
             "nombre_contagram": None,
+            "tipo_match_id": "none",
         }
 
-    if best_score >= 0.80:
-        nivel = "automatico"
-    elif best_score >= 0.55:
-        nivel = "probable"
-    else:
-        nivel = "excepcion"
-
     return {
-        "match_nivel": nivel,
+        "match_nivel": "pendiente",  # Se resuelve en match_contra_facturas
         "confianza": round(best_score * 100, 1),
         "entidad_match": best_match.get("tipo", ""),
         "id_contagram": best_match.get("id_contagram", ""),
         "nombre_contagram": best_match.get("nombre_contagram", ""),
         "cuit": best_match.get("cuit", ""),
+        "tipo_match_id": best_tipo_id,
     }
 
 
@@ -117,40 +181,56 @@ def match_contra_facturas(
     movimiento: pd.Series,
     match_info: dict,
     facturas: pd.DataFrame,
-    tolerancia_monto: float = 0.05,
 ) -> dict:
     """
-    Intenta matchear un movimiento contra facturas específicas de Contagram.
+    Cruza un movimiento contra facturas y determina el nivel ternario final:
+      - match_exacto: ID exacto + monto exacto
+      - probable_duda_id: Monto coincide pero ID es fuzzy
+      - probable_dif_cambio: ID exacto pero monto difiere
+      - no_match: nada coincide
     """
-    if match_info["match_nivel"] == "excepcion":
-        return {**match_info, "factura_match": None, "diferencia_monto": None}
+    if match_info["match_nivel"] == "no_match":
+        return {**match_info, "factura_match": None, "diferencia_monto": None,
+                "diferencia_pct": None, "match_detalle": "Sin match de identidad"}
 
     id_contagram = match_info.get("id_contagram")
     monto = movimiento.get("monto", 0)
+    tipo_id = match_info.get("tipo_match_id", "none")
 
-    # Buscar facturas del cliente/proveedor
-    if movimiento.get("clasificacion") == "cobranza":
-        id_col = "ID Cliente"
-    else:
-        id_col = "ID Proveedor"
-
+    id_col = "ID Cliente" if movimiento.get("clasificacion") == "cobranza" else "ID Proveedor"
     facturas_entidad = facturas[facturas[id_col] == id_contagram] if id_col in facturas.columns else pd.DataFrame()
 
     if facturas_entidad.empty:
-        return {**match_info, "factura_match": None, "diferencia_monto": None}
+        # Tiene match de ID pero no hay facturas => requiere revision
+        if tipo_id == "exacto":
+            nivel = "probable_dif_cambio"
+            detalle = "Proveedor/cliente identificado, sin factura pendiente en Contagram"
+        else:
+            nivel = "probable_duda_id"
+            detalle = "Alias similar pero sin factura pendiente en Contagram"
+        return {**match_info, "match_nivel": nivel, "match_detalle": detalle,
+                "factura_match": None, "diferencia_monto": None, "diferencia_pct": None}
 
-    # Buscar factura que mejor matchee por monto
-    best_factura = None
-    best_diff = float("inf")
+    # Buscar mejor factura por monto
     nro_col = "Nro Factura" if "Nro Factura" in facturas.columns else "Nro OC"
+    best_factura = None
+    best_monto_tipo = "no_match"
+    best_diff_abs = float("inf")
+    best_diff_pct = float("inf")
 
     for _, f in facturas_entidad.iterrows():
         monto_factura = f.get("Monto Total", 0)
-        diff = abs(monto - monto_factura)
-        diff_pct = diff / monto_factura if monto_factura > 0 else float("inf")
+        tipo_monto, diff_abs, diff_pct = _match_monto(monto, monto_factura)
 
-        if diff_pct < best_diff:
-            best_diff = diff_pct
+        # Prioridad: exacto > probable > no_match, luego menor diff
+        prioridad = {"exacto": 0, "probable": 1, "no_match": 2}
+        curr_pri = prioridad.get(tipo_monto, 2)
+        best_pri = prioridad.get(best_monto_tipo, 2)
+
+        if curr_pri < best_pri or (curr_pri == best_pri and diff_abs < best_diff_abs):
+            best_monto_tipo = tipo_monto
+            best_diff_abs = diff_abs
+            best_diff_pct = diff_pct
             best_factura = {
                 "nro_documento": f.get(nro_col, ""),
                 "monto_factura": monto_factura,
@@ -158,26 +238,38 @@ def match_contra_facturas(
                 "diferencia_pct": round(diff_pct * 100, 2),
             }
 
-    if best_factura and best_diff <= tolerancia_monto:
-        return {
-            **match_info,
-            "factura_match": best_factura["nro_documento"],
-            "monto_factura": best_factura["monto_factura"],
-            "diferencia_monto": best_factura["diferencia"],
-            "diferencia_pct": best_factura["diferencia_pct"],
-        }
-    elif best_factura:
-        # Mantener el nivel de match de entidad; la diferencia de monto
-        # se reporta como nota pero no downgradea el match del cliente
-        return {
-            **match_info,
-            "factura_match": best_factura["nro_documento"],
-            "monto_factura": best_factura["monto_factura"],
-            "diferencia_monto": best_factura["diferencia"],
-            "diferencia_pct": best_factura["diferencia_pct"],
-            "nota": "Diferencia de monto - posible pago parcial o retención",
-        }
-    return {**match_info, "factura_match": None, "diferencia_monto": None}
+    if best_factura is None:
+        nivel = "match_exacto" if tipo_id == "exacto" else "probable_duda_id"
+        return {**match_info, "match_nivel": nivel, "match_detalle": "Sin factura que matchee por monto",
+                "factura_match": None, "diferencia_monto": None, "diferencia_pct": None}
+
+    # ─── Resolución ternaria final ───
+    if tipo_id == "exacto" and best_monto_tipo == "exacto":
+        nivel = "match_exacto"
+        detalle = "ID exacto + monto exacto"
+    elif tipo_id == "exacto" and best_monto_tipo == "probable":
+        nivel = "probable_dif_cambio"
+        detalle = f"ID exacto, diferencia de ${best_factura['diferencia']:+,.2f} ({best_factura['diferencia_pct']:.2f}%)"
+    elif tipo_id == "fuzzy" and best_monto_tipo in ("exacto", "probable"):
+        nivel = "probable_duda_id"
+        detalle = f"Alias fuzzy (conf {match_info['confianza']}%), monto {'coincide' if best_monto_tipo == 'exacto' else 'aproximado'}"
+    elif tipo_id == "exacto" and best_monto_tipo == "no_match":
+        # ID exacto pero monto no matchea con ninguna factura => requiere revision
+        nivel = "probable_dif_cambio"
+        detalle = f"ID exacto, monto no coincide con ninguna factura (dif ${best_factura['diferencia']:+,.2f})"
+    else:
+        nivel = "no_match"
+        detalle = "Sin coincidencia suficiente"
+
+    return {
+        **match_info,
+        "match_nivel": nivel,
+        "match_detalle": detalle,
+        "factura_match": best_factura["nro_documento"],
+        "monto_factura": best_factura["monto_factura"],
+        "diferencia_monto": best_factura["diferencia"],
+        "diferencia_pct": best_factura["diferencia_pct"],
+    }
 
 
 def ejecutar_matching(
@@ -185,23 +277,27 @@ def ejecutar_matching(
     tabla_param: pd.DataFrame,
     ventas: pd.DataFrame,
     compras: pd.DataFrame,
+    config: dict = None,
 ) -> pd.DataFrame:
     """
     Ejecuta el matching completo sobre un extracto normalizado y clasificado.
+    config: dict opcional para override de MATCH_CONFIG.
     """
+    if config:
+        MATCH_CONFIG.update(config)
+
     resultados = []
 
     for idx, mov in extracto.iterrows():
-        # Paso 1: Match por tabla paramétrica
         match_info = match_por_tabla_parametrica(mov, tabla_param)
 
-        # Paso 2: Match contra facturas
         if mov.get("clasificacion") == "cobranza":
             match_info = match_contra_facturas(mov, match_info, ventas)
         elif mov.get("clasificacion") == "pago_proveedor":
             match_info = match_contra_facturas(mov, match_info, compras)
         elif mov.get("clasificacion") == "gasto_bancario":
             match_info["match_nivel"] = "gasto_bancario"
+            match_info["match_detalle"] = "Gasto/comision bancaria"
             match_info["nombre_contagram"] = "GASTO BANCARIO"
 
         resultado = {**mov.to_dict(), **match_info}

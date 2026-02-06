@@ -1,170 +1,251 @@
 # DILCOR - Informe Ejecutivo
-## Sistema de Conciliación Bancaria con Contagram
+## Sistema de Conciliacion Bancaria con Contagram
 
 **Fecha:** Diciembre 2025
-**Versión:** MVP 1.0 - Opción A (Manual CSV)
-**Preparado para:** Dirección y Contaduría de Dilcor
+**Version:** MVP 2.0 - Opcion A (Manual CSV)
+**Preparado para:** Direccion y Contaduria de Dilcor
 
 ---
 
 ## 1. Resumen Ejecutivo
 
-Se presenta el **MVP funcional** del sistema de conciliación bancaria automática para Dilcor. El sistema toma extractos bancarios de **Banco Galicia, Banco Santander y Mercado Pago**, los cruza contra los datos del ERP Contagram (ventas y compras pendientes), y genera archivos CSV listos para importar directamente en Contagram.
+Se presenta el **MVP funcional** del sistema de conciliacion bancaria automatica para Dilcor. El sistema toma extractos bancarios de **Banco Galicia, Banco Santander y Mercado Pago**, los cruza contra los datos del ERP Contagram (ventas y compras pendientes), y genera archivos listos para importar directamente en Contagram.
 
-### Resultado clave de la prueba con datos de Diciembre 2025:
-- **678 movimientos bancarios** procesados en los 3 bancos
-- **~85% de conciliación automática** sin intervención humana
-- **3 archivos de salida** generados:
-  - `subir_cobranzas_contagram.csv` → Módulo Cobranzas
-  - `subir_pagos_contagram.csv` → Módulo Pagos a Proveedores
-  - `excepciones.xlsx` → Revisión manual
+### Resultado de la prueba con datos de Diciembre 2025:
+
+| Dato | Valor |
+|------|-------|
+| Movimientos bancarios procesados | 679 |
+| Tasa de identificacion (sabemos de quien es) | 95.8% |
+| Match exacto (identidad + monto = factura) | 11.3% |
+| Probable - requiere revision parcial | 84.5% |
+| Excepciones (revision manual total) | 4.2% (28 movimientos) |
+| Facturacion procesada | $576.474.570 |
+| Dinero sin conciliar | $58.052.193 |
+
+**En resumen:** de cada 100 movimientos bancarios, el sistema identifica automaticamente 96. Solo 4 requieren que el contador busque manualmente de quien es el dinero.
 
 ---
 
 ## 2. Problema que Resuelve
 
-### Situación Actual (sin el sistema)
+### Situacion actual (sin el sistema)
+
+Hoy, la contaduria de Dilcor concilia los bancos a mano:
+
 | Tarea | Tiempo estimado | Frecuencia |
 |-------|----------------|------------|
 | Bajar extractos de 3 bancos | 15 min | Diario |
-| Comparar manualmente contra Contagram | 2-4 horas | Diario |
+| Comparar cada movimiento contra Contagram | 2-4 horas | Diario |
 | Registrar cobranzas una por una | 1-2 horas | Diario |
-| Registrar pagos uno por uno | 30-60 min | Diario |
-| Identificar diferencias/excepciones | 30-60 min | Diario |
-| **Total estimado** | **4-8 horas/día** | |
+| Registrar pagos a proveedores | 30-60 min | Diario |
+| Identificar diferencias y excepciones | 30-60 min | Diario |
+| **Total** | **4-8 horas/dia** | |
 
-### Con el sistema MVP
+### Con el sistema
+
 | Tarea | Tiempo estimado | Frecuencia |
 |-------|----------------|------------|
-| Subir extractos bancarios al sistema | 2 min | Diario |
-| Ejecutar conciliación (automático) | 30 seg | Diario |
-| Revisar excepciones | 15-30 min | Diario |
+| Bajar extractos del home banking | 5 min | Diario |
+| Subir archivos al sistema y ejecutar | 2 min | Diario |
+| Revisar excepciones (28 movimientos en dic.) | 15-30 min | Diario |
 | Importar CSVs en Contagram | 5 min | Diario |
-| **Total estimado** | **25-40 min/día** | |
+| **Total** | **25-40 min/dia** | |
 
-### Ahorro estimado: **3 a 7 horas diarias**
+### Ahorro estimado: 3 a 7 horas por dia
 
 ---
 
-## 3. Cómo Funciona (Flujo Operativo)
+## 3. Como funciona paso a paso
 
 ```
-PASO 1: Descargar extractos del home banking (Galicia, Santander, MP)
-    ↓
-PASO 2: Subir los CSVs al sistema (pantalla web Streamlit)
-    ↓
-PASO 3: Click en "Ejecutar Conciliación"
-    ↓
-PASO 4: El sistema genera automáticamente:
-    ├── subir_cobranzas_contagram.csv
-    ├── subir_pagos_contagram.csv
-    └── excepciones.xlsx
-    ↓
-PASO 5: Descargar archivos y subir a Contagram
-    ↓
-PASO 6: Contagram registra automáticamente cobranzas y pagos
+PASO 1: Descargar extractos del home banking (Galicia, Santander, Mercado Pago)
+         Son los CSV que cada banco permite exportar desde su web.
+    |
+    v
+PASO 2: Abrir la app (http://localhost:8501) y subir los archivos
+         Hay una pestana por cada banco. Se arrastran los CSV.
+    |
+    v
+PASO 3: Click en "Ejecutar Conciliacion"
+         El sistema procesa todo en menos de 10 segundos.
+    |
+    v
+PASO 4: Revisar el dashboard
+         Muestra cuantos movimientos se identificaron, cuanto dinero hay
+         en cada categoria, y que diferencias existen.
+    |
+    v
+PASO 5: Descargar los archivos generados:
+         - subir_cobranzas_contagram.csv  (para el modulo Cobranzas)
+         - subir_pagos_contagram.csv      (para el modulo Pagos)
+         - excepciones.xlsx               (para revision manual)
+    |
+    v
+PASO 6: Importar los CSV en Contagram
+         Se usan los modulos de importacion que ya tiene Contagram.
+         Para Contagram, es como si el operador hubiera cargado los datos a mano.
 ```
 
-**Desde Contagram, es como si el usuario hubiera cargado los datos manualmente.**
-No se modifica nada en Contagram. Se usa su funcionalidad existente de importación CSV.
+**Importante:** No se instala nada en Contagram. No se necesitan APIs ni accesos especiales. Se usa la funcionalidad de importacion CSV que Contagram ya tiene.
 
 ---
 
-## 4. Motor de Conciliación - Lógica
+## 4. Niveles de Match - Que significa cada uno?
 
-### 4.1 Clasificación Automática
-Cada movimiento bancario se clasifica en:
-- **Cobranza**: Dinero que entra (transferencias de clientes)
-- **Pago a Proveedor**: Dinero que sale a proveedores conocidos
-- **Gasto Bancario**: Comisiones, impuestos, mantenimiento
+El motor de conciliacion clasifica cada movimiento bancario en uno de 4 niveles. Esto determina cuanto trabajo manual necesita el contador.
 
-### 4.2 Matching Inteligente
-El sistema usa una **tabla paramétrica** que mapea:
-- Alias bancarios → Clientes/Proveedores de Contagram
-- CUIT → ID de Contagram
-- Patrones de descripción → Categorías
+### Match Exacto
 
-### 4.3 Niveles de Confianza
-| Nivel | Significado | Acción |
-|-------|------------|--------|
-| **Automático** (>80%) | Match seguro por alias + monto | Se incluye en CSV de importación |
-| **Probable** (55-80%) | Match parcial, requiere validación | Se incluye con marca de revisión |
-| **Excepción** (<55%) | Sin match encontrado | Va a excepciones.xlsx |
+- **Que es:** El sistema identifico al cliente o proveedor Y encontro una factura cuyo monto coincide exactamente (dentro de un 0.5% de tolerancia).
+- **Ejemplo:** El banco muestra "TRANSF PRITTY $200,000". En Contagram, PRITTY tiene una factura pendiente por $200,000. Todo cuadra.
+- **Accion del contador:** Ninguna. Se puede importar directo a Contagram.
 
----
+### Probable - Duda de ID
 
-## 5. Datos de la Prueba - Diciembre 2025
+- **Que es:** El sistema encontro un nombre parecido pero no identico. Puede ser que el banco escriba el nombre de forma ligeramente distinta.
+- **Ejemplo:** El banco muestra "MERPAG*PRITY" (sin la doble T). El sistema cree que puede ser PRITTY pero no esta 100% seguro.
+- **Accion del contador:** Verificar si "PRITY" es efectivamente PRITTY. Si lo es, agregar el alias "PRITY" a la tabla parametrica para que la proxima vez matchee automatico.
 
-### Extractos procesados:
-| Banco | Movimientos | Créditos | Débitos |
-|-------|------------|----------|---------|
-| Banco Galicia | ~254 | Cobranzas + pagos | Pagos + comisiones |
-| Banco Santander | ~152 | Cobranzas | Pagos + comisiones |
-| Mercado Pago | ~272 | Cobranzas (alto flujo) | Comisiones MP |
+### Probable - Diferencia de Cambio
 
-### Clientes procesados: 250 clientes activos
-### Facturación total diciembre: $576.474.570,80
+- **Que es:** El sistema identifico al cliente/proveedor con certeza (el nombre coincide), pero el monto del banco no coincide exactamente con ninguna factura individual en Contagram.
+- **Por que pasa:** Es comun que un cliente pague varias facturas juntas en una sola transferencia, o que haga un pago parcial, o que haya diferencias de redondeo o retenciones.
+- **Ejemplo:** El banco muestra "TRANSF PRITTY $500,000". PRITTY tiene facturas por $200K + $180K + $120K = $500K total, pero ninguna individual es $500K.
+- **Accion del contador:** Sabe que la plata es de PRITTY. Solo necesita indicar contra que facturas se aplica el pago.
+
+### No Match (Excepcion)
+
+- **Que es:** El sistema no pudo identificar de quien es el movimiento. No encontro ningun nombre parecido en la tabla parametrica.
+- **Por que pasa:** Puede ser un cliente nuevo, un alias que el banco usa por primera vez, o una transferencia con descripcion poco clara.
+- **Ejemplo:** El banco muestra "TRANSF TERCEROS CBU 6008350583". No hay forma de saber de quien es sin revisar.
+- **Accion del contador:** Identificar manualmente de quien es. Si lo identifica, agregar el alias a la tabla parametrica.
+- **En la app:** Estos movimientos aparecen en la pestana "Excepciones" con la accion sugerida "Agregar alias a tabla parametrica".
 
 ---
 
-## 6. Bancos Soportados
+## 5. Dashboard de Impacto Financiero - Que muestra?
 
-### Banco Galicia
-- Formato: CSV con columnas Fecha, Descripción, Débito, Crédito, Saldo
-- Detección automática
+El dashboard esta organizado en **dos bloques** que separan el flujo de dinero:
 
-### Banco Santander
-- Formato: CSV con Fecha Operación, Concepto, Importe, Saldo
-- Importe negativo = débito
+### Bloque 1: COBROS (Creditos / Ventas)
 
-### Mercado Pago
-- Formato: CSV con Monto Bruto, Comisión, IVA Comisión, Monto Neto
-- Se desglosan comisiones e IVA automáticamente
+Todo lo relacionado con dinero que **entra** al banco por cobranzas de clientes.
 
----
+| KPI | Que muestra | Como se lee |
+|-----|------------|-------------|
+| **Cobrado en Bancos** | Suma total del dinero que entro por los 3 bancos | Es lo que efectivamente se cobro. En diciembre: $576.474.310 |
+| **Facturado en Contagram** | Suma total de ventas pendientes en el ERP | Lo que se esperaba cobrar segun facturas. En diciembre: $576.474.570 |
+| **Revenue Gap** | Cobrado - Facturado | -$260 en diciembre (casi perfecto). Un gap grande indica facturas no cobradas o cobros sin factura |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto en cada nivel. Muestra cuanto dinero esta bien conciliado y cuanto requiere revision |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar facturas / Sin identificar | Porcentaje del dinero en cada estado: verde (listo para importar), amarillo (falta asignar facturas), rojo (revisar manualmente) |
 
-## 7. Impacto en Contagram
+### Bloque 2: PAGOS A PROVEEDORES (Debitos)
 
-El sistema **no requiere cambios en Contagram**:
-- Los CSV generados se importan manualmente en los módulos existentes
-- Contagram los interpreta como cargas masivas realizadas por un usuario
-- Se registran automáticamente:
-  - Cancelación de facturas
-  - Movimientos en cuentas bancarias
+Todo lo relacionado con dinero que **sale** del banco hacia proveedores.
 
----
+| KPI | Que muestra | Como se lee |
+|-----|------------|-------------|
+| **Pagado en Bancos** | Total pagado a proveedores | En diciembre: $170.350.000 en 26 pagos |
+| **OCs en Contagram** | Total de ordenes de compra registradas en el ERP | Es lo que se esperaba pagar segun las OCs |
+| **Payment Gap** | Pagado - OCs | Diferencia entre lo que se pago y lo que habia en ordenes de compra |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cuantos pagos se identificaron bien y cuantos requieren revision |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar OCs / Sin identificar | Porcentaje del dinero pagado en cada estado: verde (conciliado), amarillo (falta asignar OCs), rojo (revisar) |
 
-## 8. Implementación
+### Gastos Bancarios
 
-### Tecnología
-- **Python**: Motor de conciliación
-- **Streamlit**: Interfaz web (no requiere desarrollo frontend)
-- **Pandas**: Procesamiento de datos
-- **CSV/Excel**: Formatos de entrada y salida
-
-### Tiempo de implementación: 48-72 horas
-### Riesgo: Bajo (no modifica sistemas existentes)
+Barra informativa con el total de comisiones, impuestos y mantenimiento de cuenta. En diciembre: $1.236.860 en 16 movimientos. No se importa a Contagram, es solo informativo para conocer el costo bancario.
 
 ---
 
-## 9. Roadmap Evolutivo
+## 6. Pestanas de Resultados
 
-| Fase | Descripción | Beneficio |
-|------|------------|-----------|
-| **A (actual)** | MVP Manual - Subir CSVs | Ahorro inmediato de 3-7 hs/día |
-| **B (futuro)** | Scraping bancario automático | Elimina descarga manual de extractos |
-| **C (visión)** | Integración total vía API | Contabilidad 100% automática |
+### Pestana "Por Banco"
+Muestra un resumen de como quedo la conciliacion por cada banco. Util para ver si un banco en particular tiene mas problemas (por ejemplo, Mercado Pago suele tener mas excepciones porque sus alias son crípticos como "MERPAG*").
+
+### Pestana "Cobranzas"
+Lista de todas las cobranzas identificadas, con: cliente, CUIT, monto cobrado, factura asociada, banco, nivel de match, y porcentaje de confianza. Este archivo se descarga y se importa en el modulo Cobranzas de Contagram.
+
+### Pestana "Pagos"
+Lista de todos los pagos a proveedores identificados, con: proveedor, CUIT, monto pagado, OC asociada, banco, nivel de match. Se descarga y se importa en el modulo Pagos a Proveedores de Contagram.
+
+### Pestana "Excepciones"
+Los movimientos que el sistema no pudo identificar. Muestra: fecha, banco, monto, descripcion original del banco, y la accion sugerida (generalmente "Agregar alias a tabla parametrica"). Se descarga como Excel para que el contador los revise.
+
+### Pestana "Detalle Completo"
+Vista completa de todos los movimientos con todos los campos. Util para buscar un movimiento especifico o hacer analisis detallado.
 
 ---
 
-## 10. Próximos Pasos Recomendados
+## 7. La Tabla Parametrica
 
-1. **Validar MVP** con datos reales de un mes completo
-2. **Ajustar tabla paramétrica** con alias reales de los bancos
-3. **Capacitar al operador** en el flujo de trabajo
-4. **Evaluar migración** a Opción B (scraping) según volumen de operaciones
+La tabla parametrica (`data/config/tabla_parametrica.csv`) es el "cerebro" del sistema. Es un archivo simple que dice:
+
+> "Cuando el banco diga X, eso corresponde al cliente/proveedor Y de Contagram"
+
+| Lo que dice el banco | Lo que el sistema entiende |
+|---------------------|---------------------------|
+| MERPAG*PRITTY | Cobranza del cliente PRITTY SA (ID 1042) |
+| TRANSF BONPRIX | Cobranza del cliente BONPRIX (ID 1089) |
+| PAG COCA COLA ANDINA | Pago al proveedor Coca Cola Andina (ID 5001) |
+| COMISION MANTENIMIENTO | Gasto bancario (no va a Contagram) |
+
+**Esta tabla la mantiene el contador.** Cada vez que aparece una excepcion nueva, se agrega una linea y listo. No hace falta tocar codigo ni llamar a sistemas.
+
+Con el tiempo, la tabla crece y cada vez hay menos excepciones. El objetivo es llegar a 0 excepciones.
 
 ---
 
-*Sistema desarrollado para Dilcor - Distribución de Bebidas*
-*MVP Opción A - Conciliación Bancaria con Contagram*
+## 8. Impacto en Contagram
+
+El sistema **no modifica nada en Contagram**:
+
+- No se instala nada dentro de Contagram
+- No se necesitan APIs, plugins, ni accesos especiales
+- Se usa la funcionalidad de importacion CSV que Contagram ya tiene
+- Para Contagram, es como si el usuario hubiera cargado los datos manualmente
+
+Cuando se importan los CSV, Contagram:
+- Cancela las facturas correspondientes
+- Registra los movimientos en las cuentas bancarias
+- Genera los asientos contables como siempre
+
+---
+
+## 9. Tecnologia
+
+| Componente | Tecnologia | Por que |
+|-----------|-----------|---------|
+| Motor de conciliacion | Python 3 + Pandas | Robusto, rapido para procesar miles de filas |
+| Interfaz web | Streamlit | App web profesional sin necesidad de desarrollo frontend |
+| Persistencia (opcional) | TiDB Cloud | Base de datos para guardar historico de conciliaciones |
+| Formatos | CSV, Excel | Compatibles con Contagram y cualquier herramienta |
+
+### Requerimientos minimos:
+- PC con Python 3.9 o superior
+- Navegador web (Chrome, Firefox, Edge)
+- No necesita internet (excepto para TiDB Cloud, que es opcional)
+
+---
+
+## 10. Roadmap - Siguiente pasos
+
+| Fase | Que es | Beneficio | Tiempo |
+|------|--------|-----------|--------|
+| **A (actual)** | MVP Manual: subir CSVs, ejecutar, importar | Ahorro inmediato de 3-7 hs/dia | Listo |
+| **B (futuro)** | Scraping bancario: descarga automatica de extractos | Elimina la descarga manual de los extractos | 2-3 semanas |
+| **C (vision)** | Integracion API con Contagram | Conciliacion 100% automatica, sin archivos CSV | 1-2 meses |
+
+### Proximos pasos recomendados:
+
+1. **Validar** el MVP con un mes completo de datos reales
+2. **Ajustar la tabla parametrica** con los alias reales de los bancos (los de prueba son simulados)
+3. **Capacitar** al operador en el flujo de trabajo (subir → ejecutar → descargar → importar)
+4. **Medir** el ahorro real de tiempo durante 2-4 semanas
+5. **Decidir** si avanzar a la Opcion B (scraping bancario automatico)
+
+---
+
+*Sistema desarrollado para Dilcor - Distribucion de Bebidas*
+*MVP 2.0 Opcion A - Conciliacion Bancaria con Contagram*
+*Diciembre 2025*

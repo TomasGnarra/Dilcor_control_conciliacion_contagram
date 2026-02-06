@@ -1,7 +1,15 @@
 __pycache__/
 *.pyc
-.streamlit/
 *.egg-info/
 dist/
 build/
 .env
+
+# Streamlit secrets (credentials - NEVER commit)
+.streamlit/secrets.toml
+
+# VS Code settings (local/personal)
+.vscode/
+
+# Windows reserved names (ghost files)
+nul

@@ -1,12 +1,12 @@
 """
-Motor de Conciliación - Orquesta el proceso completo:
-1. Normalización de extractos bancarios
-2. Clasificación de movimientos
-3. Matching contra datos de Contagram
-4. Generación de outputs (CSVs para importar + excepciones)
+Motor de Conciliacion - Orquesta el proceso completo:
+1. Normalizacion de extractos bancarios
+2. Clasificacion de movimientos
+3. Matching ternario contra datos de Contagram
+4. Generacion de outputs (CSVs para importar + excepciones)
+5. KPIs de impacto financiero (Money Gap)
 """
 import pandas as pd
-import os
 from datetime import datetime
 
 from src.normalizador import normalizar, detectar_banco
@@ -25,42 +25,32 @@ class MotorConciliacion:
         extractos_bancarios: list[pd.DataFrame],
         ventas_contagram: pd.DataFrame,
         compras_contagram: pd.DataFrame,
+        match_config: dict = None,
     ) -> dict:
-        """
-        Ejecuta el proceso completo de conciliación.
-
-        Args:
-            extractos_bancarios: Lista de DataFrames con extractos de cada banco
-            ventas_contagram: DataFrame con facturas de venta pendientes
-            compras_contagram: DataFrame con OC pendientes
-
-        Returns:
-            dict con resultados y estadísticas
-        """
-        # 1. Normalizar todos los extractos
+        # 1. Normalizar
         extractos_normalizados = []
         for df in extractos_bancarios:
             banco = detectar_banco(df)
             normalizado = normalizar(df, banco)
             extractos_normalizados.append(normalizado)
 
-        # Unificar
         extracto_unificado = pd.concat(extractos_normalizados, ignore_index=True)
         extracto_unificado = extracto_unificado.sort_values("fecha").reset_index(drop=True)
 
         # 2. Clasificar
         extracto_clasificado = clasificar_extracto(extracto_unificado)
 
-        # 3. Matching
+        # 3. Matching ternario
         self.resultados = ejecutar_matching(
             extracto_clasificado,
             self.tabla_param,
             ventas_contagram,
             compras_contagram,
+            config=match_config,
         )
 
-        # 4. Calcular estadísticas
-        self._calcular_stats()
+        # 4. Stats y KPIs
+        self._calcular_stats(ventas_contagram, compras_contagram)
 
         return {
             "resultados": self.resultados,
@@ -70,54 +60,126 @@ class MotorConciliacion:
             "excepciones": self._generar_excepciones(),
         }
 
-    def _calcular_stats(self):
-        """Calcula estadísticas del proceso de conciliación."""
+    def _calcular_stats(self, ventas: pd.DataFrame, compras: pd.DataFrame):
         df = self.resultados
         total = len(df)
-        automaticos = len(df[df["match_nivel"] == "automatico"])
-        probables = len(df[df["match_nivel"] == "probable"])
-        excepciones = len(df[df["match_nivel"] == "excepcion"])
+
+        # Conteos por nivel ternario
+        match_exacto = len(df[df["match_nivel"] == "match_exacto"])
+        probable_duda_id = len(df[df["match_nivel"] == "probable_duda_id"])
+        probable_dif_cambio = len(df[df["match_nivel"] == "probable_dif_cambio"])
+        no_match = len(df[df["match_nivel"] == "no_match"])
         gastos = len(df[df["match_nivel"] == "gasto_bancario"])
+
+        conciliables = max(total - gastos, 1)
 
         cobranzas = df[df["clasificacion"] == "cobranza"]
         pagos = df[df["clasificacion"] == "pago_proveedor"]
 
+        # --- KPIs de impacto financiero ---
+        monto_cobranzas_banco = round(cobranzas["monto"].sum(), 2)
+        monto_pagos_banco = round(pagos["monto"].sum(), 2)
+        monto_ventas_contagram = round(ventas["Monto Total"].sum(), 2) if "Monto Total" in ventas.columns else 0
+        monto_compras_contagram = round(compras["Monto Total"].sum(), 2) if "Monto Total" in compras.columns else 0
+
+        # --- Helper para desglose por clasificacion ---
+        def _desglose(subset):
+            """Calcula stats de match + diferencias para un subset (cobranzas o pagos)."""
+            n = len(subset)
+            me = subset[subset["match_nivel"] == "match_exacto"]
+            di = subset[subset["match_nivel"] == "probable_duda_id"]
+            dc = subset[subset["match_nivel"] == "probable_dif_cambio"]
+            nm = subset[subset["match_nivel"] == "no_match"]
+
+            conciliados = len(me) + len(di) + len(dc)
+            return {
+                "total": n,
+                "match_exacto": len(me),
+                "match_exacto_monto": round(me["monto"].sum(), 2) if not me.empty else 0,
+                "probable_duda_id": len(di),
+                "probable_duda_id_monto": round(di["monto"].sum(), 2) if not di.empty else 0,
+                "probable_dif_cambio": len(dc),
+                "probable_dif_cambio_monto": round(dc["monto"].sum(), 2) if not dc.empty else 0,
+                "no_match": len(nm),
+                "no_match_monto": round(nm["monto"].sum(), 2) if not nm.empty else 0,
+                "conciliados": conciliados,
+                "tasa_conciliacion": round(conciliados / max(n, 1) * 100, 1),
+                "monto_total": round(subset["monto"].sum(), 2),
+                "monto_conciliado": round((me["monto"].sum() + di["monto"].sum() + dc["monto"].sum()), 2) if conciliados > 0 else 0,
+            }
+
+        cobros_stats = _desglose(cobranzas)
+        pagos_stats = _desglose(pagos)
+
+        # Diferencias globales
+        dif_cambio_rows = df[df["match_nivel"] == "probable_dif_cambio"]
+        monto_dif_cambio_total = 0
+        monto_a_favor = 0
+        monto_en_contra = 0
+        if "diferencia_monto" in dif_cambio_rows.columns:
+            for _, r in dif_cambio_rows.iterrows():
+                dif = r.get("diferencia_monto", 0) or 0
+                monto_dif_cambio_total += dif
+                if dif > 0:
+                    monto_a_favor += dif
+                else:
+                    monto_en_contra += abs(dif)
+
+        monto_no_match = round(df[df["match_nivel"] == "no_match"]["monto"].sum(), 2)
+        revenue_gap = round(monto_cobranzas_banco - monto_ventas_contagram, 2)
+        payment_gap = round(monto_pagos_banco - monto_compras_contagram, 2)
+
         self.stats = {
             "total_movimientos": total,
-            "automaticos": automaticos,
-            "probables": probables,
-            "excepciones": excepciones,
+            "match_exacto": match_exacto,
+            "probable_duda_id": probable_duda_id,
+            "probable_dif_cambio": probable_dif_cambio,
+            "no_match": no_match,
             "gastos_bancarios": gastos,
-            "tasa_conciliacion_auto": round(automaticos / max(total - gastos, 1) * 100, 1),
-            "tasa_conciliacion_total": round((automaticos + probables) / max(total - gastos, 1) * 100, 1),
+            # Tasas
+            "tasa_match_exacto": round(match_exacto / conciliables * 100, 1),
+            "tasa_probable": round((probable_duda_id + probable_dif_cambio) / conciliables * 100, 1),
+            "tasa_no_match": round(no_match / conciliables * 100, 1),
+            "tasa_conciliacion_total": round((match_exacto + probable_duda_id + probable_dif_cambio) / conciliables * 100, 1),
+            # Montos operativos
             "total_cobranzas": len(cobranzas),
-            "monto_cobranzas": round(cobranzas["monto"].sum(), 2),
+            "monto_cobranzas": monto_cobranzas_banco,
             "total_pagos": len(pagos),
-            "monto_pagos": round(pagos["monto"].sum(), 2),
+            "monto_pagos": monto_pagos_banco,
             "monto_gastos_bancarios": round(df[df["clasificacion"] == "gasto_bancario"]["monto"].sum(), 2),
+            # KPIs financieros globales
+            "monto_ventas_contagram": monto_ventas_contagram,
+            "monto_compras_contagram": monto_compras_contagram,
+            "revenue_gap": revenue_gap,
+            "payment_gap": payment_gap,
+            "monto_dif_cambio_neto": round(monto_dif_cambio_total, 2),
+            "monto_a_favor": round(monto_a_favor, 2),
+            "monto_en_contra": round(monto_en_contra, 2),
+            "monto_no_conciliado": monto_no_match,
+            # Desglose por bloque
+            "cobros": cobros_stats,
+            "pagos_prov": pagos_stats,
+            # Por banco
             "por_banco": {},
         }
 
         for banco in df["banco"].unique():
-            df_banco = df[df["banco"] == banco]
+            db = df[df["banco"] == banco]
             self.stats["por_banco"][banco] = {
-                "movimientos": len(df_banco),
-                "automaticos": len(df_banco[df_banco["match_nivel"] == "automatico"]),
-                "probables": len(df_banco[df_banco["match_nivel"] == "probable"]),
-                "excepciones": len(df_banco[df_banco["match_nivel"] == "excepcion"]),
-                "monto_creditos": round(df_banco[df_banco["tipo"] == "CREDITO"]["monto"].sum(), 2),
-                "monto_debitos": round(df_banco[df_banco["tipo"] == "DEBITO"]["monto"].sum(), 2),
+                "movimientos": len(db),
+                "match_exacto": len(db[db["match_nivel"] == "match_exacto"]),
+                "probable_duda_id": len(db[db["match_nivel"] == "probable_duda_id"]),
+                "probable_dif_cambio": len(db[db["match_nivel"] == "probable_dif_cambio"]),
+                "no_match": len(db[db["match_nivel"] == "no_match"]),
+                "monto_creditos": round(db[db["tipo"] == "CREDITO"]["monto"].sum(), 2),
+                "monto_debitos": round(db[db["tipo"] == "DEBITO"]["monto"].sum(), 2),
             }
 
     def _generar_cobranzas_csv(self) -> pd.DataFrame:
-        """
-        Genera CSV de cobranzas para importar en Contagram.
-        Solo incluye matches automáticos de tipo cobranza.
-        """
         df = self.resultados
         cobranzas = df[
             (df["clasificacion"] == "cobranza") &
-            (df["match_nivel"].isin(["automatico", "probable"]))
+            (df["match_nivel"].isin(["match_exacto", "probable_duda_id", "probable_dif_cambio"]))
         ].copy()
 
         if cobranzas.empty:
@@ -133,21 +195,16 @@ class MotorConciliacion:
             "Banco Origen": cobranzas["banco"],
             "Referencia Banco": cobranzas["referencia"],
             "Nivel Match": cobranzas["match_nivel"],
+            "Detalle Match": cobranzas.get("match_detalle", ""),
             "Confianza %": cobranzas["confianza"],
-            "Observaciones": cobranzas.apply(
-                lambda r: f"Diferencia ${r.get('diferencia_monto', 0) or 0:.2f}" if r.get("diferencia_monto") else "",
-                axis=1
-            ),
+            "Diferencia $": cobranzas.get("diferencia_monto", 0),
         })
 
     def _generar_pagos_csv(self) -> pd.DataFrame:
-        """
-        Genera CSV de pagos a proveedores para importar en Contagram.
-        """
         df = self.resultados
         pagos = df[
             (df["clasificacion"] == "pago_proveedor") &
-            (df["match_nivel"].isin(["automatico", "probable"]))
+            (df["match_nivel"].isin(["match_exacto", "probable_duda_id", "probable_dif_cambio"]))
         ].copy()
 
         if pagos.empty:
@@ -163,15 +220,13 @@ class MotorConciliacion:
             "Banco": pagos["banco"],
             "Referencia Banco": pagos["referencia"],
             "Nivel Match": pagos["match_nivel"],
+            "Detalle Match": pagos.get("match_detalle", ""),
             "Confianza %": pagos["confianza"],
         })
 
     def _generar_excepciones(self) -> pd.DataFrame:
-        """
-        Genera reporte de excepciones (movimientos no conciliados).
-        """
         df = self.resultados
-        exc = df[df["match_nivel"] == "excepcion"].copy()
+        exc = df[df["match_nivel"] == "no_match"].copy()
 
         if exc.empty:
             return pd.DataFrame()
@@ -184,9 +239,9 @@ class MotorConciliacion:
             "Descripcion Original": exc["descripcion"],
             "Monto": exc["monto"],
             "Referencia": exc["referencia"],
-            "Motivo": "Sin match en tabla paramétrica",
+            "Detalle": exc.get("match_detalle", "Sin match"),
             "Accion Sugerida": exc.apply(
-                lambda r: "Agregar alias a tabla paramétrica" if r["clasificacion"] in ["cobranza", "pago_proveedor"]
+                lambda r: "Agregar alias a tabla parametrica" if r["clasificacion"] in ["cobranza", "pago_proveedor"]
                 else "Revisar manualmente",
                 axis=1
             ),

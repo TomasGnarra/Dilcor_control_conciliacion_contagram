@@ -1,77 +1,195 @@
-# DILCOR - Conciliación Bancaria con Contagram
+# DILCOR - Conciliacion Bancaria con Contagram
 
-Sistema de conciliación automática entre extractos bancarios y Contagram (ERP) para Dilcor, distribuidora de bebidas.
+Sistema de conciliacion automatica entre extractos bancarios y el ERP Contagram para **Dilcor**, distribuidora de bebidas.
 
-## MVP - Opción A (Manual CSV)
+**Version:** 2.0 - MVP Opcion A (Manual CSV)
+**Fecha:** Diciembre 2025
 
-El sistema toma extractos bancarios de **Banco Galicia, Banco Santander y Mercado Pago**, los cruza contra datos de Contagram, y genera archivos CSV listos para importar.
+---
 
-### Flujo
+## Que es esto?
 
+Es una aplicacion web (Streamlit) que toma los extractos bancarios de los 3 bancos de Dilcor, los cruza contra los datos de Contagram, e identifica automaticamente:
+
+- **Cobranzas**: que clientes pagaron y cuanto
+- **Pagos a proveedores**: que pagos salieron y a quien
+- **Gastos bancarios**: comisiones, impuestos, mantenimiento de cuenta
+- **Excepciones**: movimientos que el sistema no pudo identificar y requieren revision manual
+
+Al final, genera archivos CSV listos para importar en Contagram, como si los hubiera cargado un operador a mano.
+
+---
+
+## Como se usa?
+
+### Paso 1: Instalar
+
+```bash
+pip install -r requirements.txt
 ```
-Extractos Bancarios (CSV) → Motor de Conciliación → CSVs para Contagram
+
+### Paso 2: Generar datos de prueba (solo la primera vez)
+
+```bash
+python generar_datos_test.py
 ```
 
-### Outputs
-- `subir_cobranzas_contagram.csv` → Módulo Cobranzas de Contagram
-- `subir_pagos_contagram.csv` → Módulo Pagos a Proveedores de Contagram
-- `excepciones.xlsx` → Movimientos que requieren revisión manual
+Esto crea extractos bancarios simulados basados en las ventas reales de diciembre 2025 (252 clientes, $576M).
+
+### Paso 3: Iniciar la aplicacion
+
+```bash
+streamlit run app.py
+```
+
+Se abre en el navegador en `http://localhost:8501`. No necesitas cuenta ni internet.
+
+### Paso 4: Dentro de la app
+
+1. **Subir extractos**: Hay una pestana por cada banco (Galicia, Santander, Mercado Pago). Subis el CSV de cada uno.
+2. **Subir datos de Contagram**: En la pestana "Datos Contagram" subis las ventas y compras pendientes.
+3. **Click en "Ejecutar Conciliacion"**: El sistema procesa todo en segundos.
+4. **Revisar resultados**: El dashboard muestra el resumen, y las pestanas Cobranzas/Pagos/Excepciones muestran el detalle.
+5. **Descargar archivos**: Cada pestana tiene boton de descarga (CSV o Excel).
+
+### Paso 5: Importar en Contagram
+
+Los archivos descargados se importan en los modulos de Contagram:
+- `subir_cobranzas_contagram.csv` → Modulo Cobranzas
+- `subir_pagos_contagram.csv` → Modulo Pagos a Proveedores
+- `excepciones.xlsx` → Para revision manual del contador
+
+---
+
+## Que muestra el Dashboard?
+
+### Resumen General (fila superior)
+
+5 tarjetas con los numeros clave: Total Movimientos, % Conciliacion Total, Match Exacto, Requieren Revision, Sin Identificar.
+
+### 4 Niveles de Match
+
+| Nivel | Que significa | Color |
+|-------|--------------|-------|
+| **Match Exacto** | Se identifico al cliente/proveedor Y el monto coincide con una factura especifica | Verde |
+| **Probable - Duda de ID** | El nombre es parecido pero no identico (ej: "PRITTY" vs "PRITY"). Requiere confirmar si es el mismo cliente | Amarillo |
+| **Probable - Dif. de Cambio** | El cliente/proveedor esta identificado, pero el monto no coincide con ninguna factura individual. Puede ser un pago que cubre varias facturas, un pago parcial, o redondeo | Naranja |
+| **No Match** | No se pudo identificar de quien es el movimiento. Revisar manualmente | Rojo |
+
+### Bloque 1: COBROS (Creditos / Ventas)
+
+Header negro. Muestra todo lo relacionado con dinero que **entra** al banco (cobranzas de clientes):
+
+| Fila | KPIs | Que muestra |
+|------|------|-------------|
+| **Montos principales** | Cobrado en Bancos, Facturado en Contagram, Revenue Gap | Cuanto entro, cuanto se esperaba, y la diferencia. Revenue Gap ideal = $0 |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad de movimientos y monto en cada nivel. Permite ver cuanto dinero esta bien conciliado vs requiere revision |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar facturas / Sin identificar | Porcentaje del dinero en cada estado. Verde = listo, Amarillo = falta asignar facturas, Rojo = revisar manualmente |
+
+### Bloque 2: PAGOS A PROVEEDORES (Debitos)
+
+Header verde. Muestra todo lo relacionado con dinero que **sale** del banco (pagos a proveedores):
+
+| Fila | KPIs | Que muestra |
+|------|------|-------------|
+| **Montos principales** | Pagado en Bancos, OCs en Contagram, Payment Gap | Cuanto se pago, cuanto habia en ordenes de compra, y la diferencia |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto por nivel para pagos a proveedores |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar OCs / Sin identificar | Porcentaje del dinero pagado en cada estado. Verde = conciliado, Amarillo = falta asignar OCs, Rojo = revisar |
+
+### Gastos Bancarios
+
+Barra informativa al final: total de comisiones, impuestos y mantenimiento de cuenta. No va a Contagram.
+
+### Desglose por Banco
+
+Tabla expandible por banco (Galicia, Santander, Mercado Pago) con la distribucion de matches de cada uno.
+
+---
 
 ## Estructura del Proyecto
 
 ```
-├── app.py                          # App Streamlit (interfaz web)
+├── app.py                          # App Streamlit (interfaz web con branding Dilcor)
 ├── src/
-│   ├── motor_conciliacion.py       # Orquestador principal
-│   ├── normalizador.py             # Normalización multi-banco
-│   ├── clasificador.py             # Clasificación de movimientos
-│   └── matcher.py                  # Motor de matching inteligente
+│   ├── motor_conciliacion.py       # Orquestador: normaliza, clasifica, matchea, genera KPIs
+│   ├── normalizador.py             # Convierte CSV de cada banco a formato unificado
+│   ├── clasificador.py             # Clasifica: cobranza, pago, gasto bancario
+│   ├── matcher.py                  # Motor de matching ternario con umbrales configurables
+│   └── db_connector.py             # Persistencia en TiDB Cloud (opcional)
 ├── data/
-│   ├── test/                       # Extractos bancarios de prueba
-│   ├── contagram/                  # Datos de Contagram (ventas/compras)
-│   └── config/                     # Tabla paramétrica
+│   ├── test/                       # Extractos bancarios simulados (dic 2025)
+│   ├── contagram/                  # Ventas y compras pendientes de Contagram
+│   └── config/                     # Tabla parametrica (alias banco → cliente Contagram)
+├── .streamlit/
+│   ├── config.toml                 # Tema visual (colores Dilcor)
+│   └── secrets.toml                # Credenciales TiDB (NO se sube al repo)
 ├── docs/
-│   ├── INFORME_EJECUTIVO.md        # Informe para dirección
-│   └── PRESENTACION_EJECUTIVA.md   # Presentación para reunión
-├── output/                         # Archivos generados
-├── generar_datos_test.py           # Generador de datos de prueba
+│   ├── INFORME_EJECUTIVO.md        # Informe detallado para direccion
+│   └── PRESENTACION_EJECUTIVA.md   # Slides para reunion
+├── output/                         # Archivos generados por la conciliacion
+├── generar_datos_test.py           # Genera datos de prueba desde ventas reales
 ├── test_conciliacion.py            # Tests end-to-end
 └── requirements.txt                # Dependencias Python
 ```
 
-## Instalación y Uso
-
-```bash
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Generar datos de prueba (basados en ventas reales de dic 2025)
-python generar_datos_test.py
-
-# Ejecutar tests
-python test_conciliacion.py
-
-# Iniciar la app
-streamlit run app.py
-```
-
-## Resultados de la Prueba (Diciembre 2025)
-
-| Métrica | Valor |
-|---------|-------|
-| Movimientos procesados | 676 |
-| Conciliación automática | 96.2% |
-| Excepciones | 25 (3.8%) |
-| Clientes activos | 250 |
-| Facturación procesada | $576.474.570 |
+---
 
 ## Bancos Soportados
 
-- **Banco Galicia**: CSV con Fecha, Descripción, Débito, Crédito, Saldo
-- **Banco Santander**: CSV con Fecha Operación, Concepto, Importe, Saldo
-- **Mercado Pago**: CSV con Monto Bruto, Comisión MP, IVA, Monto Neto
+| Banco | Formato CSV esperado | Deteccion |
+|-------|---------------------|-----------|
+| **Banco Galicia** | Fecha, Descripcion, Debito, Credito, Saldo | Automatica por columnas |
+| **Banco Santander** | Fecha Operacion, Concepto, Importe (+/-), Saldo | Automatica por columnas |
+| **Mercado Pago** | Fecha, Descripcion, Monto Bruto, Comision MP, IVA, Monto Neto | Automatica por columnas |
 
-## Documentación
+El sistema detecta automaticamente de que banco es cada archivo por los nombres de las columnas. No hace falta indicarlo manualmente.
 
-- [Informe Ejecutivo](docs/INFORME_EJECUTIVO.md)
-- [Presentación Ejecutiva](docs/PRESENTACION_EJECUTIVA.md)
+---
+
+## Umbrales Configurables
+
+Desde el sidebar de la app se pueden ajustar los umbrales del matching:
+
+| Parametro | Default | Para que sirve |
+|-----------|---------|---------------|
+| Umbral ID Exacto | 80% | Minima similitud de alias para considerarlo match exacto |
+| Umbral ID Probable | 55% | Minima similitud para considerarlo "duda de ID" |
+| Tolerancia Monto Exacto | 0.5% | Diferencia maxima de monto para match exacto |
+| Tolerancia Monto Probable | 1.0% | Diferencia maxima de monto para "diferencia de cambio" |
+| Tolerancia Monto Absoluta | $500 | Diferencia absoluta maxima (para montos chicos) |
+
+---
+
+## Tabla Parametrica
+
+El archivo `data/config/tabla_parametrica.csv` es la "inteligencia" del sistema. Mapea:
+
+```
+alias_banco → nombre_contagram, id_contagram, cuit, tipo
+```
+
+Ejemplo:
+| alias_banco | nombre_contagram | id_contagram | cuit | tipo |
+|-------------|-----------------|--------------|------|------|
+| PRITTY | PRITTY SA | 1042 | 30-50012345-6 | Cliente |
+| COCA COLA ANDINA | COCA COLA ANDINA SA | 5001 | 30-50001234-5 | Proveedor |
+
+**Cuando un movimiento cae en "Excepciones", la accion sugerida es agregar el alias a esta tabla.** Asi, la proxima vez el sistema lo reconoce automaticamente. Con el tiempo, cada vez menos movimientos caen en excepciones.
+
+---
+
+## Persistencia TiDB Cloud (opcional)
+
+Si se configura `.streamlit/secrets.toml` con las credenciales de TiDB Cloud, el sistema guarda cada corrida de conciliacion en la tabla `historico_conciliaciones`. Esto permite:
+- Ver el historial de conciliaciones
+- Comparar meses
+- Auditar cambios
+
+Si no se configura, la app funciona igual pero sin persistencia.
+
+---
+
+## Documentacion
+
+- [Informe Ejecutivo](docs/INFORME_EJECUTIVO.md) - Explicacion detallada para direccion y contaduria
+- [Presentacion Ejecutiva](docs/PRESENTACION_EJECUTIVA.md) - Slides para reunion de presentacion
