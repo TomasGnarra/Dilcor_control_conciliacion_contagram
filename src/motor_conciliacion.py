@@ -91,17 +91,6 @@ class MotorConciliacion:
             dc = subset[subset["match_nivel"] == "probable_dif_cambio"]
             nm = subset[subset["match_nivel"] == "no_match"]
 
-            # Diferencias de cambio en este subset
-            dif_neto, dif_favor, dif_contra = 0, 0, 0
-            if "diferencia_monto" in dc.columns:
-                for _, r in dc.iterrows():
-                    d = r.get("diferencia_monto", 0) or 0
-                    dif_neto += d
-                    if d > 0:
-                        dif_favor += d
-                    else:
-                        dif_contra += abs(d)
-
             conciliados = len(me) + len(di) + len(dc)
             return {
                 "total": n,
@@ -117,9 +106,6 @@ class MotorConciliacion:
                 "tasa_conciliacion": round(conciliados / max(n, 1) * 100, 1),
                 "monto_total": round(subset["monto"].sum(), 2),
                 "monto_conciliado": round((me["monto"].sum() + di["monto"].sum() + dc["monto"].sum()), 2) if conciliados > 0 else 0,
-                "dif_cambio_neto": round(dif_neto, 2),
-                "dif_a_favor": round(dif_favor, 2),
-                "dif_en_contra": round(dif_contra, 2),
             }
 
         cobros_stats = _desglose(cobranzas)

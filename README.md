@@ -84,7 +84,7 @@ Header negro. Muestra todo lo relacionado con dinero que **entra** al banco (cob
 |------|------|-------------|
 | **Montos principales** | Cobrado en Bancos, Facturado en Contagram, Revenue Gap | Cuanto entro, cuanto se esperaba, y la diferencia. Revenue Gap ideal = $0 |
 | **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad de movimientos y monto en cada nivel. Permite ver cuanto dinero esta bien conciliado vs requiere revision |
-| **Diferencias** | Dif. Cambio neto, A favor, En contra | Cuanto pagaron clientes de mas (+) vs de menos (-). Sirve para detectar perdidas |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar facturas / Sin identificar | Porcentaje del dinero en cada estado. Verde = listo, Amarillo = falta asignar facturas, Rojo = revisar manualmente |
 
 ### Bloque 2: PAGOS A PROVEEDORES (Debitos)
 
@@ -94,7 +94,7 @@ Header verde. Muestra todo lo relacionado con dinero que **sale** del banco (pag
 |------|------|-------------|
 | **Montos principales** | Pagado en Bancos, OCs en Contagram, Payment Gap | Cuanto se pago, cuanto habia en ordenes de compra, y la diferencia |
 | **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto por nivel para pagos a proveedores |
-| **Diferencias** | Dif. Cambio neto, Pagaste de menos, Pagaste de mas | Diferencias entre lo pagado y las OCs registradas |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar OCs / Sin identificar | Porcentaje del dinero pagado en cada estado. Verde = conciliado, Amarillo = falta asignar OCs, Rojo = revisar |
 
 ### Gastos Bancarios
 

@@ -221,9 +221,9 @@ with st.sidebar:
 # --- Helpers ---
 def format_money(val):
     if pd.isna(val) or val == 0:
-        return "$0,00"
+        return "$0"
     sign = "-" if val < 0 else ""
-    return f"{sign}${abs(val):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{sign}${abs(val):,.0f}".replace(",", ".")
 
 
 def load_demo_data():
@@ -387,26 +387,29 @@ if data_ready:
         </div>
         """, unsafe_allow_html=True)
 
-        # Fila 3: Diferencias detectadas
-        if cb['probable_dif_cambio'] > 0:
-            st.markdown(f"""
-            <div class="kpi-row">
-                <div class="kpi-card">
-                    <div class="kpi-lbl">Diferencias de Cambio (neto cobros)</div>
-                    <div class="kpi-val-sm">{format_money(cb['dif_cambio_neto'])}</div>
-                </div>
-                <div class="kpi-card-green">
-                    <div class="kpi-lbl">A favor de Dilcor</div>
-                    <div class="kpi-val-sm">+{format_money(cb['dif_a_favor'])}</div>
-                    <div class="kpi-sub">Clientes pagaron de mas</div>
-                </div>
-                <div class="kpi-card-red">
-                    <div class="kpi-lbl">En contra de Dilcor</div>
-                    <div class="kpi-val-sm">-{format_money(cb['dif_en_contra'])}</div>
-                    <div class="kpi-sub">Clientes pagaron de menos</div>
-                </div>
+        # Fila 3: Resumen de flujo de dinero
+        pct_conciliado = round(cb['match_exacto_monto'] / max(cb['monto_total'], 1) * 100, 1)
+        pct_identificado = round(cb['probable_dif_cambio_monto'] / max(cb['monto_total'], 1) * 100, 1)
+        pct_sin_id = round(cb['no_match_monto'] / max(cb['monto_total'], 1) * 100, 1)
+        st.markdown(f"""
+        <div class="kpi-row">
+            <div class="kpi-card-green">
+                <div class="kpi-lbl">Conciliado 100%</div>
+                <div class="kpi-val-sm">{format_money(cb['match_exacto_monto'])}</div>
+                <div class="kpi-sub">{pct_conciliado}% del total &bull; Listo para importar</div>
             </div>
-            """, unsafe_allow_html=True)
+            <div class="kpi-card-amber">
+                <div class="kpi-lbl">Identificado, asignar facturas</div>
+                <div class="kpi-val-sm">{format_money(cb['probable_dif_cambio_monto'] + cb['probable_duda_id_monto'])}</div>
+                <div class="kpi-sub">{pct_identificado}% del total &bull; Sabemos de quien es</div>
+            </div>
+            <div class="kpi-card-red">
+                <div class="kpi-lbl">Sin identificar</div>
+                <div class="kpi-val-sm">{format_money(cb['no_match_monto'])}</div>
+                <div class="kpi-sub">{pct_sin_id}% del total &bull; Revision manual</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # ═══════════════════════════════════════════════════════
         # BLOQUE 2: PAGOS A PROVEEDORES (Debitos)
@@ -467,26 +470,29 @@ if data_ready:
         </div>
         """, unsafe_allow_html=True)
 
-        # Fila 3: Diferencias detectadas en pagos
-        if pg['probable_dif_cambio'] > 0:
-            st.markdown(f"""
-            <div class="kpi-row">
-                <div class="kpi-card">
-                    <div class="kpi-lbl">Diferencias de Cambio (neto pagos)</div>
-                    <div class="kpi-val-sm">{format_money(pg['dif_cambio_neto'])}</div>
-                </div>
-                <div class="kpi-card-green">
-                    <div class="kpi-lbl">Pagaste de menos</div>
-                    <div class="kpi-val-sm">+{format_money(pg['dif_a_favor'])}</div>
-                    <div class="kpi-sub">A favor de Dilcor</div>
-                </div>
-                <div class="kpi-card-red">
-                    <div class="kpi-lbl">Pagaste de mas</div>
-                    <div class="kpi-val-sm">-{format_money(pg['dif_en_contra'])}</div>
-                    <div class="kpi-sub">En contra de Dilcor</div>
-                </div>
+        # Fila 3: Resumen de flujo de dinero pagos
+        pct_pg_conc = round(pg['match_exacto_monto'] / max(pg['monto_total'], 1) * 100, 1)
+        pct_pg_ident = round(pg['probable_dif_cambio_monto'] / max(pg['monto_total'], 1) * 100, 1)
+        pct_pg_sin = round(pg['no_match_monto'] / max(pg['monto_total'], 1) * 100, 1)
+        st.markdown(f"""
+        <div class="kpi-row">
+            <div class="kpi-card-green">
+                <div class="kpi-lbl">Conciliado 100%</div>
+                <div class="kpi-val-sm">{format_money(pg['match_exacto_monto'])}</div>
+                <div class="kpi-sub">{pct_pg_conc}% del total &bull; Proveedor + OC OK</div>
             </div>
-            """, unsafe_allow_html=True)
+            <div class="kpi-card-amber">
+                <div class="kpi-lbl">Identificado, asignar OC</div>
+                <div class="kpi-val-sm">{format_money(pg['probable_dif_cambio_monto'] + pg['probable_duda_id_monto'])}</div>
+                <div class="kpi-sub">{pct_pg_ident}% del total &bull; Sabemos a quien se pago</div>
+            </div>
+            <div class="kpi-card-red">
+                <div class="kpi-lbl">Sin identificar</div>
+                <div class="kpi-val-sm">{format_money(pg['no_match_monto'])}</div>
+                <div class="kpi-sub">{pct_pg_sin}% del total &bull; Revision manual</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # ═══════════════════════════════════════════════════════
         # GASTOS BANCARIOS

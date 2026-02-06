@@ -138,7 +138,7 @@ Todo lo relacionado con dinero que **entra** al banco por cobranzas de clientes.
 | **Facturado en Contagram** | Suma total de ventas pendientes en el ERP | Lo que se esperaba cobrar segun facturas. En diciembre: $576.474.570 |
 | **Revenue Gap** | Cobrado - Facturado | -$260 en diciembre (casi perfecto). Un gap grande indica facturas no cobradas o cobros sin factura |
 | **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto en cada nivel. Muestra cuanto dinero esta bien conciliado y cuanto requiere revision |
-| **Diferencias de cambio** | A favor (+) y en contra (-) de Dilcor | Clientes que pagaron de mas vs de menos. Sirve para detectar perdidas sistematicas |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar facturas / Sin identificar | Porcentaje del dinero en cada estado: verde (listo para importar), amarillo (falta asignar facturas), rojo (revisar manualmente) |
 
 ### Bloque 2: PAGOS A PROVEEDORES (Debitos)
 
@@ -150,7 +150,7 @@ Todo lo relacionado con dinero que **sale** del banco hacia proveedores.
 | **OCs en Contagram** | Total de ordenes de compra registradas en el ERP | Es lo que se esperaba pagar segun las OCs |
 | **Payment Gap** | Pagado - OCs | Diferencia entre lo que se pago y lo que habia en ordenes de compra |
 | **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cuantos pagos se identificaron bien y cuantos requieren revision |
-| **Diferencias** | Pagaste de menos (+) / Pagaste de mas (-) | Detecta si se esta pagando mas o menos de lo acordado con proveedores |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar OCs / Sin identificar | Porcentaje del dinero pagado en cada estado: verde (conciliado), amarillo (falta asignar OCs), rojo (revisar) |
 
 ### Gastos Bancarios
 

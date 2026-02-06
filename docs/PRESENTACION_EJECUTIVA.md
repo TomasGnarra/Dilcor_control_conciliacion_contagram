@@ -102,7 +102,7 @@ El dashboard se organiza en **dos bloques**:
 | Facturado en Contagram | Total de facturas pendientes en el ERP |
 | Revenue Gap | Diferencia entre cobrado y facturado. Ideal = $0 |
 | Desglose por nivel | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar (cantidad + monto) |
-| Diferencias de cambio | A favor (+) vs en contra (-) de Dilcor |
+| Resumen de flujo | Conciliado 100% / Identificado, asignar facturas / Sin identificar (porcentaje) |
 
 **Bloque 2: PAGOS A PROVEEDORES (Debitos)**
 | KPI | Que muestra |
