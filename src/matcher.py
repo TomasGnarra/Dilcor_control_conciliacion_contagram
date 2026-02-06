@@ -201,9 +201,13 @@ def match_contra_facturas(
     facturas_entidad = facturas[facturas[id_col] == id_contagram] if id_col in facturas.columns else pd.DataFrame()
 
     if facturas_entidad.empty:
-        # Tiene match de ID pero no hay facturas => se reporta según calidad de ID
-        nivel = "match_exacto" if tipo_id == "exacto" else "probable_duda_id"
-        detalle = "Entidad identificada, sin factura pendiente asociada"
+        # Tiene match de ID pero no hay facturas => requiere revision
+        if tipo_id == "exacto":
+            nivel = "probable_dif_cambio"
+            detalle = "Proveedor/cliente identificado, sin factura pendiente en Contagram"
+        else:
+            nivel = "probable_duda_id"
+            detalle = "Alias similar pero sin factura pendiente en Contagram"
         return {**match_info, "match_nivel": nivel, "match_detalle": detalle,
                 "factura_match": None, "diferencia_monto": None, "diferencia_pct": None}
 
@@ -250,9 +254,9 @@ def match_contra_facturas(
         nivel = "probable_duda_id"
         detalle = f"Alias fuzzy (conf {match_info['confianza']}%), monto {'coincide' if best_monto_tipo == 'exacto' else 'aproximado'}"
     elif tipo_id == "exacto" and best_monto_tipo == "no_match":
-        # ID exacto pero monto no matchea con ninguna factura
-        nivel = "match_exacto"
-        detalle = f"ID exacto, monto sin factura directa (dif ${best_factura['diferencia']:+,.2f})"
+        # ID exacto pero monto no matchea con ninguna factura => requiere revision
+        nivel = "probable_dif_cambio"
+        detalle = f"ID exacto, monto no coincide con ninguna factura (dif ${best_factura['diferencia']:+,.2f})"
     else:
         nivel = "no_match"
         detalle = "Sin coincidencia suficiente"
