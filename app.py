@@ -81,8 +81,32 @@ st.markdown("""
                       padding: 1rem 1.2rem; border-radius: 0 8px 8px 0; }
     .kpi-card-amber { flex: 1; background: #FFFBEB; border-left: 4px solid #D4760A;
                       padding: 1rem 1.2rem; border-radius: 0 8px 8px 0; }
+    .kpi-card-red { flex: 1; background: #FFF5F5; border-left: 4px solid #E30613;
+                    padding: 1rem 1.2rem; border-radius: 0 8px 8px 0; }
+    .kpi-card-dark { flex: 1; background: #F5F5F5; border-left: 4px solid #1A1A1A;
+                     padding: 1rem 1.2rem; border-radius: 0 8px 8px 0; }
     .kpi-val { font-size: 1.4rem; font-weight: 700; color: #1A1A1A; }
+    .kpi-val-sm { font-size: 1.1rem; font-weight: 700; color: #1A1A1A; }
     .kpi-lbl { font-size: 0.78rem; color: #666; }
+    .kpi-sub { font-size: 0.72rem; color: #999; margin-top: 0.2rem; }
+
+    /* Bloque headers */
+    .bloque-header {
+        background: #1A1A1A; color: #FFF; padding: 0.8rem 1.5rem;
+        border-radius: 10px; margin: 1.5rem 0 1rem 0;
+        display: flex; align-items: center; gap: 0.8rem;
+    }
+    .bloque-header-green {
+        background: #0B6E31; color: #FFF; padding: 0.8rem 1.5rem;
+        border-radius: 10px; margin: 1.5rem 0 1rem 0;
+        display: flex; align-items: center; gap: 0.8rem;
+    }
+    .bloque-icon { font-size: 1.5rem; }
+    .bloque-title { font-size: 1.1rem; font-weight: 700; letter-spacing: 1px; }
+    .bloque-badge {
+        background: rgba(255,255,255,0.2); padding: 0.2rem 0.8rem;
+        border-radius: 20px; font-size: 0.75rem; margin-left: auto;
+    }
 
     /* Tabs styling */
     .stTabs [data-baseweb="tab-list"] { gap: 4px; }
@@ -291,66 +315,198 @@ if data_ready:
         # ═══ DASHBOARD PRINCIPAL ═══
         st.markdown("---")
 
-        # --- Fila 1: Metricas de conciliacion ternaria ---
+        # --- Resumen General ---
         c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
-            st.markdown(f'<div class="mc mc-dark"><div class="mc-val">{stats["total_movimientos"]}</div><div class="mc-lbl">Movimientos</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="mc mc-dark"><div class="mc-val">{stats["total_movimientos"]}</div><div class="mc-lbl">Total Movimientos</div></div>', unsafe_allow_html=True)
         with c2:
+            st.markdown(f'<div class="mc mc-green"><div class="mc-val">{stats["tasa_conciliacion_total"]}%</div><div class="mc-lbl">Conciliacion Total</div></div>', unsafe_allow_html=True)
+        with c3:
             st.markdown(f'<div class="mc mc-green"><div class="mc-val">{stats["match_exacto"]}</div><div class="mc-lbl">Match Exacto</div></div>', unsafe_allow_html=True)
-        with c3:
-            st.markdown(f'<div class="mc mc-orange"><div class="mc-val">{stats["probable_duda_id"]}</div><div class="mc-lbl">Duda de ID</div></div>', unsafe_allow_html=True)
         with c4:
-            st.markdown(f'<div class="mc mc-orange"><div class="mc-val">{stats["probable_dif_cambio"]}</div><div class="mc-lbl">Dif. de Cambio</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="mc mc-orange"><div class="mc-val">{stats["probable_duda_id"] + stats["probable_dif_cambio"]}</div><div class="mc-lbl">Requieren Revision</div></div>', unsafe_allow_html=True)
         with c5:
-            st.markdown(f'<div class="mc mc-red"><div class="mc-val">{stats["no_match"]}</div><div class="mc-lbl">Sin Match</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="mc mc-red"><div class="mc-val">{stats["no_match"]}</div><div class="mc-lbl">Sin Identificar</div></div>', unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        # ═══════════════════════════════════════════════════════
+        # BLOQUE 1: COBROS (Creditos / Ventas)
+        # ═══════════════════════════════════════════════════════
+        cb = stats["cobros"]
+        st.markdown(f"""
+        <div class="bloque-header">
+            <div class="bloque-icon">📥</div>
+            <div class="bloque-title">COBROS &mdash; Creditos / Ventas</div>
+            <div class="bloque-badge">{cb['total']} movimientos &bull; {cb['tasa_conciliacion']}% conciliado</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # --- Fila 2: Tasas ---
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.metric("Tasa Match Exacto", f"{stats['tasa_match_exacto']}%")
-        with c2:
-            st.metric("Tasa Probable (revision)", f"{stats['tasa_probable']}%")
-        with c3:
-            st.metric("Conciliacion Total", f"{stats['tasa_conciliacion_total']}%",
-                       delta=f"{stats['no_match']} sin conciliar", delta_color="inverse")
-
-        st.markdown("---")
-
-        # ═══ KPIs DE IMPACTO FINANCIERO ═══
-        st.markdown("### Impacto Financiero")
-        st.markdown("""
+        # Fila 1: Montos principales
+        st.markdown(f"""
         <div class="kpi-row">
-            <div class="kpi-card">
+            <div class="kpi-card-dark">
                 <div class="kpi-lbl">Cobrado en Bancos</div>
-                <div class="kpi-val">""" + format_money(stats["monto_cobranzas"]) + """</div>
+                <div class="kpi-val">{format_money(cb['monto_total'])}</div>
+                <div class="kpi-sub">{cb['total']} movimientos de clientes</div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card-dark">
                 <div class="kpi-lbl">Facturado en Contagram</div>
-                <div class="kpi-val">""" + format_money(stats["monto_ventas_contagram"]) + """</div>
+                <div class="kpi-val">{format_money(stats['monto_ventas_contagram'])}</div>
+                <div class="kpi-sub">Ventas pendientes registradas</div>
             </div>
-            <div class="kpi-card""" + ("-green" if stats["revenue_gap"] >= 0 else "") + """">
+            <div class="kpi-card{'_green' if abs(stats['revenue_gap']) < 10000 else '_red'}">
                 <div class="kpi-lbl">Revenue Gap (Banco - Contagram)</div>
-                <div class="kpi-val">""" + format_money(stats["revenue_gap"]) + """</div>
+                <div class="kpi-val">{format_money(stats['revenue_gap'])}</div>
+                <div class="kpi-sub">{'Casi perfecto' if abs(stats['revenue_gap']) < 10000 else 'Revisar diferencia'}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            st.metric("Pagos a Proveedores", format_money(stats["monto_pagos"]),
-                       f"{stats['total_pagos']} movimientos")
-        with c2:
-            st.metric("Gastos Bancarios", format_money(stats["monto_gastos_bancarios"]),
-                       f"{stats['gastos_bancarios']} movimientos")
-        with c3:
-            delta_dif = format_money(stats["monto_dif_cambio_neto"])
-            st.metric("Diferencias de Cambio (neto)", delta_dif,
-                       f"+{format_money(stats['monto_a_favor'])} / -{format_money(stats['monto_en_contra'])}")
-        with c4:
-            st.metric("Dinero sin Conciliar", format_money(stats["monto_no_conciliado"]),
-                       f"{stats['no_match']} movimientos", delta_color="inverse")
+        # Fila 2: Desglose por nivel de match
+        st.markdown(f"""
+        <div class="kpi-row">
+            <div class="kpi-card-green">
+                <div class="kpi-lbl">Match Exacto</div>
+                <div class="kpi-val-sm">{cb['match_exacto']} mov.</div>
+                <div class="kpi-sub">{format_money(cb['match_exacto_monto'])} &bull; ID + monto OK</div>
+            </div>
+            <div class="kpi-card-amber">
+                <div class="kpi-lbl">Duda de ID</div>
+                <div class="kpi-val-sm">{cb['probable_duda_id']} mov.</div>
+                <div class="kpi-sub">{format_money(cb['probable_duda_id_monto'])} &bull; Verificar cliente</div>
+            </div>
+            <div class="kpi-card-amber">
+                <div class="kpi-lbl">Dif. de Cambio</div>
+                <div class="kpi-val-sm">{cb['probable_dif_cambio']} mov.</div>
+                <div class="kpi-sub">{format_money(cb['probable_dif_cambio_monto'])} &bull; Asignar facturas</div>
+            </div>
+            <div class="kpi-card-red">
+                <div class="kpi-lbl">Sin Identificar</div>
+                <div class="kpi-val-sm">{cb['no_match']} mov.</div>
+                <div class="kpi-sub">{format_money(cb['no_match_monto'])} &bull; Revision manual</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Fila 3: Diferencias detectadas
+        if cb['probable_dif_cambio'] > 0:
+            st.markdown(f"""
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-lbl">Diferencias de Cambio (neto cobros)</div>
+                    <div class="kpi-val-sm">{format_money(cb['dif_cambio_neto'])}</div>
+                </div>
+                <div class="kpi-card-green">
+                    <div class="kpi-lbl">A favor de Dilcor</div>
+                    <div class="kpi-val-sm">+{format_money(cb['dif_a_favor'])}</div>
+                    <div class="kpi-sub">Clientes pagaron de mas</div>
+                </div>
+                <div class="kpi-card-red">
+                    <div class="kpi-lbl">En contra de Dilcor</div>
+                    <div class="kpi-val-sm">-{format_money(cb['dif_en_contra'])}</div>
+                    <div class="kpi-sub">Clientes pagaron de menos</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # ═══════════════════════════════════════════════════════
+        # BLOQUE 2: PAGOS A PROVEEDORES (Debitos)
+        # ═══════════════════════════════════════════════════════
+        pg = stats["pagos_prov"]
+        st.markdown(f"""
+        <div class="bloque-header-green">
+            <div class="bloque-icon">📤</div>
+            <div class="bloque-title">PAGOS A PROVEEDORES &mdash; Debitos</div>
+            <div class="bloque-badge">{pg['total']} movimientos &bull; {pg['tasa_conciliacion']}% conciliado</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Fila 1: Montos principales
+        st.markdown(f"""
+        <div class="kpi-row">
+            <div class="kpi-card-dark">
+                <div class="kpi-lbl">Pagado en Bancos</div>
+                <div class="kpi-val">{format_money(pg['monto_total'])}</div>
+                <div class="kpi-sub">{pg['total']} pagos a proveedores</div>
+            </div>
+            <div class="kpi-card-dark">
+                <div class="kpi-lbl">OCs en Contagram</div>
+                <div class="kpi-val">{format_money(stats['monto_compras_contagram'])}</div>
+                <div class="kpi-sub">Ordenes de compra registradas</div>
+            </div>
+            <div class="kpi-card{'_green' if abs(stats['payment_gap']) < 10000 else '_red'}">
+                <div class="kpi-lbl">Payment Gap (Banco - Contagram)</div>
+                <div class="kpi-val">{format_money(stats['payment_gap'])}</div>
+                <div class="kpi-sub">{'Alineado' if abs(stats['payment_gap']) < 10000 else 'Revisar diferencia'}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Fila 2: Desglose por nivel
+        st.markdown(f"""
+        <div class="kpi-row">
+            <div class="kpi-card-green">
+                <div class="kpi-lbl">Match Exacto</div>
+                <div class="kpi-val-sm">{pg['match_exacto']} mov.</div>
+                <div class="kpi-sub">{format_money(pg['match_exacto_monto'])} &bull; Proveedor + OC OK</div>
+            </div>
+            <div class="kpi-card-amber">
+                <div class="kpi-lbl">Duda de ID</div>
+                <div class="kpi-val-sm">{pg['probable_duda_id']} mov.</div>
+                <div class="kpi-sub">{format_money(pg['probable_duda_id_monto'])} &bull; Verificar proveedor</div>
+            </div>
+            <div class="kpi-card-amber">
+                <div class="kpi-lbl">Dif. de Cambio</div>
+                <div class="kpi-val-sm">{pg['probable_dif_cambio']} mov.</div>
+                <div class="kpi-sub">{format_money(pg['probable_dif_cambio_monto'])} &bull; Asignar OC</div>
+            </div>
+            <div class="kpi-card-red">
+                <div class="kpi-lbl">Sin Identificar</div>
+                <div class="kpi-val-sm">{pg['no_match']} mov.</div>
+                <div class="kpi-sub">{format_money(pg['no_match_monto'])} &bull; Revision manual</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Fila 3: Diferencias detectadas en pagos
+        if pg['probable_dif_cambio'] > 0:
+            st.markdown(f"""
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-lbl">Diferencias de Cambio (neto pagos)</div>
+                    <div class="kpi-val-sm">{format_money(pg['dif_cambio_neto'])}</div>
+                </div>
+                <div class="kpi-card-green">
+                    <div class="kpi-lbl">Pagaste de menos</div>
+                    <div class="kpi-val-sm">+{format_money(pg['dif_a_favor'])}</div>
+                    <div class="kpi-sub">A favor de Dilcor</div>
+                </div>
+                <div class="kpi-card-red">
+                    <div class="kpi-lbl">Pagaste de mas</div>
+                    <div class="kpi-val-sm">-{format_money(pg['dif_en_contra'])}</div>
+                    <div class="kpi-sub">En contra de Dilcor</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # ═══════════════════════════════════════════════════════
+        # GASTOS BANCARIOS
+        # ═══════════════════════════════════════════════════════
+        st.markdown(f"""
+        <div class="kpi-row">
+            <div class="kpi-card-dark" style="flex: none; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div>
+                        <div class="kpi-lbl">🏦 Gastos Bancarios (comisiones, impuestos, mantenimiento)</div>
+                        <div class="kpi-val">{format_money(stats['monto_gastos_bancarios'])}</div>
+                    </div>
+                    <div style="margin-left: auto; text-align: right;">
+                        <div class="kpi-sub">{stats['gastos_bancarios']} movimientos</div>
+                        <div class="kpi-sub">No van a Contagram &bull; Solo informativo</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # ═══ TABS DE DETALLE ═══
         st.markdown("---")

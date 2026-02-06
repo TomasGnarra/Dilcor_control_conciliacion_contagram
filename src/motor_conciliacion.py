@@ -82,11 +82,54 @@ class MotorConciliacion:
         monto_ventas_contagram = round(ventas["Monto Total"].sum(), 2) if "Monto Total" in ventas.columns else 0
         monto_compras_contagram = round(compras["Monto Total"].sum(), 2) if "Monto Total" in compras.columns else 0
 
-        # Diferencias de monto en matches
+        # --- Helper para desglose por clasificacion ---
+        def _desglose(subset):
+            """Calcula stats de match + diferencias para un subset (cobranzas o pagos)."""
+            n = len(subset)
+            me = subset[subset["match_nivel"] == "match_exacto"]
+            di = subset[subset["match_nivel"] == "probable_duda_id"]
+            dc = subset[subset["match_nivel"] == "probable_dif_cambio"]
+            nm = subset[subset["match_nivel"] == "no_match"]
+
+            # Diferencias de cambio en este subset
+            dif_neto, dif_favor, dif_contra = 0, 0, 0
+            if "diferencia_monto" in dc.columns:
+                for _, r in dc.iterrows():
+                    d = r.get("diferencia_monto", 0) or 0
+                    dif_neto += d
+                    if d > 0:
+                        dif_favor += d
+                    else:
+                        dif_contra += abs(d)
+
+            conciliados = len(me) + len(di) + len(dc)
+            return {
+                "total": n,
+                "match_exacto": len(me),
+                "match_exacto_monto": round(me["monto"].sum(), 2) if not me.empty else 0,
+                "probable_duda_id": len(di),
+                "probable_duda_id_monto": round(di["monto"].sum(), 2) if not di.empty else 0,
+                "probable_dif_cambio": len(dc),
+                "probable_dif_cambio_monto": round(dc["monto"].sum(), 2) if not dc.empty else 0,
+                "no_match": len(nm),
+                "no_match_monto": round(nm["monto"].sum(), 2) if not nm.empty else 0,
+                "conciliados": conciliados,
+                "tasa_conciliacion": round(conciliados / max(n, 1) * 100, 1),
+                "monto_total": round(subset["monto"].sum(), 2),
+                "monto_conciliado": round((me["monto"].sum() + di["monto"].sum() + dc["monto"].sum()), 2) if conciliados > 0 else 0,
+                "dif_cambio_neto": round(dif_neto, 2),
+                "dif_a_favor": round(dif_favor, 2),
+                "dif_en_contra": round(dif_contra, 2),
+            }
+
+        cobros_stats = _desglose(cobranzas)
+        pagos_stats = _desglose(pagos)
+
+        # Diferencias globales
         dif_cambio_rows = df[df["match_nivel"] == "probable_dif_cambio"]
         monto_dif_cambio_total = 0
-        monto_a_favor = 0    # Banco cobro mas de lo facturado
-        monto_en_contra = 0  # Banco cobro menos de lo facturado
+        monto_a_favor = 0
+        monto_en_contra = 0
         if "diferencia_monto" in dif_cambio_rows.columns:
             for _, r in dif_cambio_rows.iterrows():
                 dif = r.get("diferencia_monto", 0) or 0
@@ -96,11 +139,9 @@ class MotorConciliacion:
                 else:
                     monto_en_contra += abs(dif)
 
-        # No match = dinero sin conciliar
         monto_no_match = round(df[df["match_nivel"] == "no_match"]["monto"].sum(), 2)
-
-        # Revenue gap: diferencia entre lo cobrado (banco) y lo facturado (contagram)
         revenue_gap = round(monto_cobranzas_banco - monto_ventas_contagram, 2)
+        payment_gap = round(monto_pagos_banco - monto_compras_contagram, 2)
 
         self.stats = {
             "total_movimientos": total,
@@ -120,14 +161,18 @@ class MotorConciliacion:
             "total_pagos": len(pagos),
             "monto_pagos": monto_pagos_banco,
             "monto_gastos_bancarios": round(df[df["clasificacion"] == "gasto_bancario"]["monto"].sum(), 2),
-            # KPIs financieros (Money Gap)
+            # KPIs financieros globales
             "monto_ventas_contagram": monto_ventas_contagram,
             "monto_compras_contagram": monto_compras_contagram,
             "revenue_gap": revenue_gap,
+            "payment_gap": payment_gap,
             "monto_dif_cambio_neto": round(monto_dif_cambio_total, 2),
             "monto_a_favor": round(monto_a_favor, 2),
             "monto_en_contra": round(monto_en_contra, 2),
             "monto_no_conciliado": monto_no_match,
+            # Desglose por bloque
+            "cobros": cobros_stats,
+            "pagos_prov": pagos_stats,
             # Por banco
             "por_banco": {},
         }
