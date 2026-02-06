@@ -1,7 +1,9 @@
 __pycache__/
 *.pyc
-.streamlit/
 *.egg-info/
 dist/
 build/
 .env
+
+# Streamlit secrets (credentials - NEVER commit)
+.streamlit/secrets.toml
