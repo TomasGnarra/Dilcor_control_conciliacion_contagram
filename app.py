@@ -215,7 +215,7 @@ with st.sidebar:
     }
 
     st.markdown("---")
-    st.caption("Dilcor v2.0 MVP | 2025")
+    st.caption("Dilcor v2.1 MVP | 2025")
 
 
 # --- Helpers ---
@@ -367,7 +367,7 @@ if data_ready:
             <div class="kpi-card-green">
                 <div class="kpi-lbl">Match Exacto</div>
                 <div class="kpi-val-sm">{cb['match_exacto']} mov.</div>
-                <div class="kpi-sub">{format_money(cb['match_exacto_monto'])} &bull; ID + monto OK</div>
+                <div class="kpi-sub">{cb['match_directo']} directo (1:1) + {cb['match_suma']} por suma</div>
             </div>
             <div class="kpi-card-amber">
                 <div class="kpi-lbl">Duda de ID</div>
@@ -389,7 +389,7 @@ if data_ready:
 
         # Fila 3: Resumen de flujo de dinero
         pct_conciliado = round(cb['match_exacto_monto'] / max(cb['monto_total'], 1) * 100, 1)
-        pct_identificado = round(cb['probable_dif_cambio_monto'] / max(cb['monto_total'], 1) * 100, 1)
+        pct_identificado = round((cb['probable_dif_cambio_monto'] + cb['probable_duda_id_monto']) / max(cb['monto_total'], 1) * 100, 1)
         pct_sin_id = round(cb['no_match_monto'] / max(cb['monto_total'], 1) * 100, 1)
         st.markdown(f"""
         <div class="kpi-row">
@@ -407,6 +407,33 @@ if data_ready:
                 <div class="kpi-lbl">Sin identificar</div>
                 <div class="kpi-val-sm">{format_money(cb['no_match_monto'])}</div>
                 <div class="kpi-sub">{pct_sin_id}% del total &bull; Revision manual</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Fila 4: Cobrado de mas / de menos
+        cb_neta_class = "_green" if cb['diferencia_neta'] >= 0 else "_red"
+        st.markdown(f"""
+        <div class="kpi-row">
+            <div class="kpi-card-green">
+                <div class="kpi-lbl">Match 1:1 (directo)</div>
+                <div class="kpi-val-sm">{cb['match_directo']} mov.</div>
+                <div class="kpi-sub">{format_money(cb['match_directo_monto'])} &bull; 1 factura = 1 transferencia</div>
+            </div>
+            <div class="kpi-card-green">
+                <div class="kpi-lbl">Match por Suma</div>
+                <div class="kpi-val-sm">{cb['match_suma']} mov.</div>
+                <div class="kpi-sub">{format_money(cb['match_suma_monto'])} &bull; varias facturas = 1 transferencia</div>
+            </div>
+            <div class="kpi-card-amber">
+                <div class="kpi-lbl">Cobrado de Mas</div>
+                <div class="kpi-val-sm">{format_money(cb['de_mas'])}</div>
+                <div class="kpi-sub">Clientes que pagaron mas de lo facturado</div>
+            </div>
+            <div class="kpi-card{cb_neta_class}">
+                <div class="kpi-lbl">Cobrado de Menos</div>
+                <div class="kpi-val-sm">{format_money(cb['de_menos'])}</div>
+                <div class="kpi-sub">Clientes que pagaron menos de lo facturado</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -450,7 +477,7 @@ if data_ready:
             <div class="kpi-card-green">
                 <div class="kpi-lbl">Match Exacto</div>
                 <div class="kpi-val-sm">{pg['match_exacto']} mov.</div>
-                <div class="kpi-sub">{format_money(pg['match_exacto_monto'])} &bull; Proveedor + OC OK</div>
+                <div class="kpi-sub">{pg['match_directo']} directo (1:1) + {pg['match_suma']} por suma</div>
             </div>
             <div class="kpi-card-amber">
                 <div class="kpi-lbl">Duda de ID</div>
@@ -472,7 +499,7 @@ if data_ready:
 
         # Fila 3: Resumen de flujo de dinero pagos
         pct_pg_conc = round(pg['match_exacto_monto'] / max(pg['monto_total'], 1) * 100, 1)
-        pct_pg_ident = round(pg['probable_dif_cambio_monto'] / max(pg['monto_total'], 1) * 100, 1)
+        pct_pg_ident = round((pg['probable_dif_cambio_monto'] + pg['probable_duda_id_monto']) / max(pg['monto_total'], 1) * 100, 1)
         pct_pg_sin = round(pg['no_match_monto'] / max(pg['monto_total'], 1) * 100, 1)
         st.markdown(f"""
         <div class="kpi-row">
@@ -490,6 +517,33 @@ if data_ready:
                 <div class="kpi-lbl">Sin identificar</div>
                 <div class="kpi-val-sm">{format_money(pg['no_match_monto'])}</div>
                 <div class="kpi-sub">{pct_pg_sin}% del total &bull; Revision manual</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Fila 4: Pagado de mas / de menos
+        pg_neta_class = "_green" if pg['diferencia_neta'] >= 0 else "_red"
+        st.markdown(f"""
+        <div class="kpi-row">
+            <div class="kpi-card-green">
+                <div class="kpi-lbl">Match 1:1 (directo)</div>
+                <div class="kpi-val-sm">{pg['match_directo']} mov.</div>
+                <div class="kpi-sub">{format_money(pg['match_directo_monto'])} &bull; 1 OC = 1 pago</div>
+            </div>
+            <div class="kpi-card-green">
+                <div class="kpi-lbl">Match por Suma</div>
+                <div class="kpi-val-sm">{pg['match_suma']} mov.</div>
+                <div class="kpi-sub">{format_money(pg['match_suma_monto'])} &bull; varias OCs = 1 pago</div>
+            </div>
+            <div class="kpi-card-amber">
+                <div class="kpi-lbl">Pagado de Mas</div>
+                <div class="kpi-val-sm">{format_money(pg['de_mas'])}</div>
+                <div class="kpi-sub">Pagaste mas de lo que dice la OC</div>
+            </div>
+            <div class="kpi-card{pg_neta_class}">
+                <div class="kpi-lbl">Pagado de Menos</div>
+                <div class="kpi-val-sm">{format_money(pg['de_menos'])}</div>
+                <div class="kpi-sub">Pagaste menos de lo que dice la OC</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -598,7 +652,8 @@ if data_ready:
             st.markdown("### Detalle Completo")
             df_full = resultado["resultados"]
             cols = ["fecha", "banco", "tipo", "clasificacion", "descripcion",
-                    "monto", "match_nivel", "match_detalle", "confianza",
+                    "monto", "match_nivel", "tipo_match_monto", "facturas_count",
+                    "match_detalle", "confianza",
                     "nombre_contagram", "factura_match", "diferencia_monto"]
             cols_ok = [c for c in cols if c in df_full.columns]
             st.dataframe(df_full[cols_ok], use_container_width=True, hide_index=True)

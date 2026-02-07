@@ -117,6 +117,66 @@ def _match_monto(monto_banco: float, monto_factura: float) -> tuple[str, float, 
         return "no_match", diff_abs, diff_pct
 
 
+def _match_monto_suma(monto_banco: float, facturas_entidad: pd.DataFrame,
+                      nro_col: str, tolerancia_pct: float) -> dict | None:
+    """
+    Busca combinacion de facturas que sumen el monto bancario (± tolerancia).
+    Estrategia: 1) suma total, 2) subconjuntos de 2 a max_size facturas.
+    """
+    from itertools import combinations
+
+    facturas_list = []
+    for _, f in facturas_entidad.iterrows():
+        m = float(f.get("Monto Total", 0))
+        if m > 0:
+            facturas_list.append({"nro": str(f.get(nro_col, "")), "monto": m})
+
+    if len(facturas_list) < 2:
+        return None
+
+    # 1. Suma total de todas las facturas
+    total = sum(f["monto"] for f in facturas_list)
+    if total > 0:
+        diff_pct = abs(monto_banco - total) / total
+        if diff_pct <= tolerancia_pct:
+            return {
+                "facturas": facturas_list,
+                "suma": round(total, 2),
+                "diferencia": round(monto_banco - total, 2),
+                "diferencia_pct": round(diff_pct * 100, 2),
+                "tipo": "suma_total",
+                "count": len(facturas_list),
+            }
+
+    # 2. Subconjuntos (limitar segun cantidad de facturas)
+    n = len(facturas_list)
+    if n <= 12:
+        max_size = min(n - 1, 8)
+    elif n <= 18:
+        max_size = min(n - 1, 6)
+    else:
+        max_size = min(n - 1, 5)
+
+    facturas_list.sort(key=lambda x: x["monto"], reverse=True)
+
+    for size in range(2, max_size + 1):
+        for combo in combinations(facturas_list, size):
+            combo_sum = sum(f["monto"] for f in combo)
+            if combo_sum > 0:
+                diff_pct = abs(monto_banco - combo_sum) / combo_sum
+                if diff_pct <= tolerancia_pct:
+                    return {
+                        "facturas": list(combo),
+                        "suma": round(combo_sum, 2),
+                        "diferencia": round(monto_banco - combo_sum, 2),
+                        "diferencia_pct": round(diff_pct * 100, 2),
+                        "tipo": "suma_parcial",
+                        "count": size,
+                    }
+
+    return None
+
+
 def match_por_tabla_parametrica(
     movimiento: pd.Series,
     tabla_param: pd.DataFrame,
@@ -191,7 +251,8 @@ def match_contra_facturas(
     """
     if match_info["match_nivel"] == "no_match":
         return {**match_info, "factura_match": None, "diferencia_monto": None,
-                "diferencia_pct": None, "match_detalle": "Sin match de identidad"}
+                "diferencia_pct": None, "match_detalle": "Sin match de identidad",
+                "tipo_match_monto": None, "facturas_count": 0}
 
     id_contagram = match_info.get("id_contagram")
     monto = movimiento.get("monto", 0)
@@ -209,7 +270,8 @@ def match_contra_facturas(
             nivel = "probable_duda_id"
             detalle = "Alias similar pero sin factura pendiente en Contagram"
         return {**match_info, "match_nivel": nivel, "match_detalle": detalle,
-                "factura_match": None, "diferencia_monto": None, "diferencia_pct": None}
+                "factura_match": None, "diferencia_monto": None, "diferencia_pct": None,
+                "tipo_match_monto": None, "facturas_count": 0}
 
     # Buscar mejor factura por monto
     nro_col = "Nro Factura" if "Nro Factura" in facturas.columns else "Nro OC"
@@ -241,22 +303,51 @@ def match_contra_facturas(
     if best_factura is None:
         nivel = "match_exacto" if tipo_id == "exacto" else "probable_duda_id"
         return {**match_info, "match_nivel": nivel, "match_detalle": "Sin factura que matchee por monto",
-                "factura_match": None, "diferencia_monto": None, "diferencia_pct": None}
+                "factura_match": None, "diferencia_monto": None, "diferencia_pct": None,
+                "tipo_match_monto": None, "facturas_count": 0}
 
-    # ─── Resolución ternaria final ───
+    # ─── Resolución ternaria final (con sum matching) ───
+    tipo_match_monto = None
+    facturas_count = 1
+
     if tipo_id == "exacto" and best_monto_tipo == "exacto":
+        # Caso ideal: ID exacto + monto exacto 1:1
         nivel = "match_exacto"
-        detalle = "ID exacto + monto exacto"
-    elif tipo_id == "exacto" and best_monto_tipo == "probable":
-        nivel = "probable_dif_cambio"
-        detalle = f"ID exacto, diferencia de ${best_factura['diferencia']:+,.2f} ({best_factura['diferencia_pct']:.2f}%)"
+        tipo_match_monto = "directo"
+        detalle = "ID exacto + monto exacto (1:1)"
+
+    elif tipo_id == "exacto" and best_monto_tipo in ("probable", "no_match"):
+        # ID exacto pero monto no matchea 1:1 → intentar suma de facturas
+        sum_result = _match_monto_suma(
+            monto, facturas_entidad, nro_col,
+            get_config("tolerancia_monto_exacto_pct"),
+        )
+        if sum_result:
+            nivel = "match_exacto"
+            tipo_match_monto = sum_result["tipo"]
+            facturas_count = sum_result["count"]
+            facturas_str = " + ".join(f["nro"] for f in sum_result["facturas"])
+            best_factura = {
+                "nro_documento": facturas_str,
+                "monto_factura": sum_result["suma"],
+                "diferencia": sum_result["diferencia"],
+                "diferencia_pct": sum_result["diferencia_pct"],
+            }
+            tipo_label = "todas las facturas" if sum_result["tipo"] == "suma_total" else f"{sum_result['count']} facturas"
+            detalle = f"ID exacto + suma de {tipo_label}"
+        else:
+            # Sum matching fallo → probable_dif_cambio
+            nivel = "probable_dif_cambio"
+            if best_monto_tipo == "probable":
+                detalle = f"ID exacto, mejor factura dif ${best_factura['diferencia']:+,.2f} ({best_factura['diferencia_pct']:.2f}%)"
+            else:
+                detalle = f"ID exacto, sin coincidencia de monto (mejor dif ${best_factura['diferencia']:+,.2f})"
+
     elif tipo_id == "fuzzy" and best_monto_tipo in ("exacto", "probable"):
         nivel = "probable_duda_id"
+        tipo_match_monto = "directo"
         detalle = f"Alias fuzzy (conf {match_info['confianza']}%), monto {'coincide' if best_monto_tipo == 'exacto' else 'aproximado'}"
-    elif tipo_id == "exacto" and best_monto_tipo == "no_match":
-        # ID exacto pero monto no matchea con ninguna factura => requiere revision
-        nivel = "probable_dif_cambio"
-        detalle = f"ID exacto, monto no coincide con ninguna factura (dif ${best_factura['diferencia']:+,.2f})"
+
     else:
         nivel = "no_match"
         detalle = "Sin coincidencia suficiente"
@@ -269,6 +360,8 @@ def match_contra_facturas(
         "monto_factura": best_factura["monto_factura"],
         "diferencia_monto": best_factura["diferencia"],
         "diferencia_pct": best_factura["diferencia_pct"],
+        "tipo_match_monto": tipo_match_monto,
+        "facturas_count": facturas_count,
     }
 
 

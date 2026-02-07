@@ -95,11 +95,18 @@ PASO 6: Importar los CSV en Contagram
 
 El motor de conciliacion clasifica cada movimiento bancario en uno de 4 niveles. Esto determina cuanto trabajo manual necesita el contador.
 
-### Match Exacto
+### Match Exacto (directo - 1:1)
 
-- **Que es:** El sistema identifico al cliente o proveedor Y encontro una factura cuyo monto coincide exactamente (dentro de un 0.5% de tolerancia).
+- **Que es:** El sistema identifico al cliente o proveedor Y encontro **una factura** cuyo monto coincide exactamente (dentro de un 0.5% de tolerancia).
 - **Ejemplo:** El banco muestra "TRANSF PRITTY $200,000". En Contagram, PRITTY tiene una factura pendiente por $200,000. Todo cuadra.
 - **Accion del contador:** Ninguna. Se puede importar directo a Contagram.
+
+### Match Exacto (suma - varias facturas)
+
+- **Que es:** El sistema identifico al cliente/proveedor Y encontro una **combinacion de facturas que sumadas** coinciden con el monto del banco.
+- **Ejemplo:** El banco muestra "TRANSF PRITTY $500,000". PRITTY tiene facturas A-001 ($200K) + A-002 ($180K) + A-003 ($120K) = $500K. El sistema detecta que la suma de esas 3 facturas coincide.
+- **Accion del contador:** Verificar que las facturas asignadas son las correctas. En el CSV se listan separadas por "+".
+- **Flag en el reporte:** La columna "Tipo Match" muestra `suma_parcial` (algunas facturas) o `suma_total` (todas las facturas del cliente). La columna "Cant Facturas" indica cuantas se sumaron.
 
 ### Probable - Duda de ID
 
@@ -109,10 +116,10 @@ El motor de conciliacion clasifica cada movimiento bancario en uno de 4 niveles.
 
 ### Probable - Diferencia de Cambio
 
-- **Que es:** El sistema identifico al cliente/proveedor con certeza (el nombre coincide), pero el monto del banco no coincide exactamente con ninguna factura individual en Contagram.
-- **Por que pasa:** Es comun que un cliente pague varias facturas juntas en una sola transferencia, o que haga un pago parcial, o que haya diferencias de redondeo o retenciones.
-- **Ejemplo:** El banco muestra "TRANSF PRITTY $500,000". PRITTY tiene facturas por $200K + $180K + $120K = $500K total, pero ninguna individual es $500K.
-- **Accion del contador:** Sabe que la plata es de PRITTY. Solo necesita indicar contra que facturas se aplica el pago.
+- **Que es:** El sistema identifico al cliente/proveedor con certeza, pero el monto no coincide con ninguna factura individual **ni con ninguna combinacion de facturas** dentro de la tolerancia.
+- **Por que pasa:** Puede ser un pago parcial, retenciones, o facturas que aun no se cargaron en Contagram.
+- **Ejemplo:** El banco muestra "TRANSF PRITTY $500,000". PRITTY tiene facturas por $200K + $180K = $380K total. Ni una individual ni la suma cuadran con $500K.
+- **Accion del contador:** Sabe que la plata es de PRITTY. Necesita investigar que facturas cubre el pago.
 
 ### No Match (Excepcion)
 
@@ -137,8 +144,9 @@ Todo lo relacionado con dinero que **entra** al banco por cobranzas de clientes.
 | **Cobrado en Bancos** | Suma total del dinero que entro por los 3 bancos | Es lo que efectivamente se cobro. En diciembre: $576.474.310 |
 | **Facturado en Contagram** | Suma total de ventas pendientes en el ERP | Lo que se esperaba cobrar segun facturas. En diciembre: $576.474.570 |
 | **Revenue Gap** | Cobrado - Facturado | -$260 en diciembre (casi perfecto). Un gap grande indica facturas no cobradas o cobros sin factura |
-| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto en cada nivel. Muestra cuanto dinero esta bien conciliado y cuanto requiere revision |
-| **Resumen de flujo** | Conciliado 100% / Identificado, asignar facturas / Sin identificar | Porcentaje del dinero en cada estado: verde (listo para importar), amarillo (falta asignar facturas), rojo (revisar manualmente) |
+| **Desglose por nivel** | Match Exacto (X directo + Y suma) / Duda ID / Dif. Cambio / Sin Identificar | Match Exacto muestra cuantos fueron 1:1 y cuantos sumando facturas |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar facturas / Sin identificar | Porcentaje del dinero en cada estado |
+| **Tipo match + Diferencias** | Match directo / Match por suma / Cobrado de mas / Cobrado de menos | Detalle de tipo de match y diferencias a favor o en contra |
 
 ### Bloque 2: PAGOS A PROVEEDORES (Debitos)
 
@@ -149,8 +157,9 @@ Todo lo relacionado con dinero que **sale** del banco hacia proveedores.
 | **Pagado en Bancos** | Total pagado a proveedores | En diciembre: $170.350.000 en 26 pagos |
 | **OCs en Contagram** | Total de ordenes de compra registradas en el ERP | Es lo que se esperaba pagar segun las OCs |
 | **Payment Gap** | Pagado - OCs | Diferencia entre lo que se pago y lo que habia en ordenes de compra |
-| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cuantos pagos se identificaron bien y cuantos requieren revision |
-| **Resumen de flujo** | Conciliado 100% / Identificado, asignar OCs / Sin identificar | Porcentaje del dinero pagado en cada estado: verde (conciliado), amarillo (falta asignar OCs), rojo (revisar) |
+| **Desglose por nivel** | Match Exacto (X directo + Y suma) / Duda ID / Dif. Cambio / Sin Identificar | Cuantos pagos se identificaron bien y cuantos requieren revision |
+| **Resumen de flujo** | Conciliado 100% / Identificado, asignar OCs / Sin identificar | Porcentaje del dinero pagado en cada estado |
+| **Tipo match + Diferencias** | Match directo / Match por suma / Pagado de mas / Pagado de menos | Detalle de tipo de match y diferencias de pago |
 
 ### Gastos Bancarios
 

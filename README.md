@@ -71,9 +71,10 @@ Los archivos descargados se importan en los modulos de Contagram:
 
 | Nivel | Que significa | Color |
 |-------|--------------|-------|
-| **Match Exacto** | Se identifico al cliente/proveedor Y el monto coincide con una factura especifica | Verde |
+| **Match Exacto (directo)** | Se identifico al cliente/proveedor Y el monto coincide con una factura 1:1 | Verde |
+| **Match Exacto (suma)** | Se identifico al cliente/proveedor Y el monto coincide con la **suma de varias facturas** | Verde |
 | **Probable - Duda de ID** | El nombre es parecido pero no identico (ej: "PRITTY" vs "PRITY"). Requiere confirmar si es el mismo cliente | Amarillo |
-| **Probable - Dif. de Cambio** | El cliente/proveedor esta identificado, pero el monto no coincide con ninguna factura individual. Puede ser un pago que cubre varias facturas, un pago parcial, o redondeo | Naranja |
+| **Probable - Dif. de Cambio** | El cliente/proveedor esta identificado, pero el monto no coincide con ninguna factura individual ni con ninguna combinacion. Revisar manualmente | Naranja |
 | **No Match** | No se pudo identificar de quien es el movimiento. Revisar manualmente | Rojo |
 
 ### Bloque 1: COBROS (Creditos / Ventas)
@@ -83,8 +84,9 @@ Header negro. Muestra todo lo relacionado con dinero que **entra** al banco (cob
 | Fila | KPIs | Que muestra |
 |------|------|-------------|
 | **Montos principales** | Cobrado en Bancos, Facturado en Contagram, Revenue Gap | Cuanto entro, cuanto se esperaba, y la diferencia. Revenue Gap ideal = $0 |
-| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad de movimientos y monto en cada nivel. Permite ver cuanto dinero esta bien conciliado vs requiere revision |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad de movimientos y monto en cada nivel. Match Exacto muestra cuantos son 1:1 y cuantos por suma |
 | **Resumen de flujo** | Conciliado 100% / Identificado, asignar facturas / Sin identificar | Porcentaje del dinero en cada estado. Verde = listo, Amarillo = falta asignar facturas, Rojo = revisar manualmente |
+| **Tipo match + Diferencias** | Match directo / Match por suma / Cobrado de mas / Cobrado de menos | Cuantos matchearon 1:1 vs sumando facturas, y diferencias de dinero a favor o en contra de Dilcor |
 
 ### Bloque 2: PAGOS A PROVEEDORES (Debitos)
 
@@ -93,8 +95,9 @@ Header verde. Muestra todo lo relacionado con dinero que **sale** del banco (pag
 | Fila | KPIs | Que muestra |
 |------|------|-------------|
 | **Montos principales** | Pagado en Bancos, OCs en Contagram, Payment Gap | Cuanto se pago, cuanto habia en ordenes de compra, y la diferencia |
-| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto por nivel para pagos a proveedores |
+| **Desglose por nivel** | Match Exacto / Duda ID / Dif. Cambio / Sin Identificar | Cantidad y monto por nivel para pagos a proveedores. Match Exacto muestra 1:1 vs suma |
 | **Resumen de flujo** | Conciliado 100% / Identificado, asignar OCs / Sin identificar | Porcentaje del dinero pagado en cada estado. Verde = conciliado, Amarillo = falta asignar OCs, Rojo = revisar |
+| **Tipo match + Diferencias** | Match directo / Match por suma / Pagado de mas / Pagado de menos | Cuantos matchearon 1:1 vs sumando OCs, y diferencias a favor o en contra |
 
 ### Gastos Bancarios
 
