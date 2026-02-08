@@ -82,13 +82,13 @@
 03/12/2025,1051.0,GRAPPA,20-02499471-7,713966.85,A-00143,—,1,Mercado Pago,REF329056,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+337,107.92)",95.0,337107.92
 03/12/2025,1050.0,CLIN VINOTECA general paz,23-49361832-4,690854.44,A-00142,—,1,Mercado Pago,REF676884,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,096,458.07)",95.0,-1096458.07
 03/12/2025,1025.0,RAIZ FUEGO MOVIL,33-67054668-8,1600281.07,A-00102,—,1,Mercado Pago,REF422002,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,623,702.94)",95.0,-1623702.94
-03/12/2025,1226.0,Autoservicio 70/30,27-47935646-5,116044.57,A-00376 + A-00377,suma_total,2,Banco Santander,REF596864,match_exacto,ID exacto + suma de todas las facturas,87.2,0.0
+03/12/2025,1226.0,Autoservicio 70/30,27-47935646-5,116044.57,A-00376 + A-00377,suma_total,2,Banco Santander,REF596864,match_exacto,ID exacto + suma de todas las facturas,97.7,0.0
 03/12/2025,1242.0,vicioteca recta,30-42257905-0,64703.9,A-00398,directo,1,Banco Santander,REF499095,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
 03/12/2025,1105.0,QHATU,27-29751613-6,144001.33,A-00213,—,1,Banco Santander,REF615827,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-575,872.34)",95.0,-575872.34
 03/12/2025,1212.0,SARSA FUSION,30-65918033-9,162614.01,A-00355 + A-00356,suma_total,2,Banco Galicia,REF907455,match_exacto,ID exacto + suma de todas las facturas,95.0,0.0
 03/12/2025,1238.0,CHEZ GENERAL PAZ,27-53714785-9,81685.2,A-00393 + A-00394,suma_total,2,Banco Galicia,REF229545,match_exacto,ID exacto + suma de todas las facturas,95.0,0.0
 03/12/2025,1227.0,*alejandro tasca Bartender,33-39828073-7,112959.65,A-00378,directo,1,Banco Galicia,REF337264,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
-03/12/2025,1183.0,ALTO TEJEDA  MENENDEZ PIDAL,30-87833918-7,285599.98,A-00314,directo,1,Banco Galicia,REF114400,probable_duda_id,"Alias fuzzy (conf 72.0%), monto coincide",72.0,0.0
+03/12/2025,1183.0,ALTO TEJEDA  MENENDEZ PIDAL,30-87833918-7,285599.98,A-00314,directo,1,Banco Galicia,REF114400,probable_duda_id,"Alias fuzzy (conf 71.2%), monto coincide",71.2,0.0
 03/12/2025,1129.0,SYRAH nueva cba,20-95396218-5,332535.72,A-00243,—,1,Banco Galicia,REF536158,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-176,350.11)",95.0,-176350.11
 03/12/2025,1127.0,FELICITAS CATERING,20-43410369-7,298599.87,A-00240,—,1,Banco Galicia,REF608947,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-220,596.07)",95.0,-220596.07
 03/12/2025,1244.0,BACKERHAUS,23-19034043-8,53702.99,A-00400,directo,1,Banco Galicia,REF251631,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
@@ -116,7 +116,7 @@
 04/12/2025,1056.0,LA FERNECERIA,33-07154516-8,320845.23,A-00150,—,1,Mercado Pago,REF962057,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,332,145.19)",95.0,-1332145.19
 04/12/2025,1084.0,ANONIMO MANANTIALES,20-83933529-0,363815.22,A-00185,—,1,Mercado Pago,REF470248,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-666,620.51)",95.0,-666620.51
 04/12/2025,1087.0,CUATRO CEPAS,30-75891783-9,497308.32,A-00189,—,1,Mercado Pago,REF106945,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+265,586.55)",95.0,265586.55
-04/12/2025,1091.0,Tomis distribuidora,30-73657661-5,387524.75,A-00196,—,1,Mercado Pago,REF572623,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-582,480.21)",94.7,-582480.21
+04/12/2025,1091.0,Tomis distribuidora,30-73657661-5,387524.75,A-00196,—,1,Mercado Pago,REF572623,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-582,480.21)",85.0,-582480.21
 04/12/2025,1112.0,GREENPARADISE,27-97820715-1,305459.93,A-00222,—,1,Mercado Pago,REF592984,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-354,877.63)",95.0,-354877.63
 04/12/2025,1125.0,CALINA,20-51522047-2,289321.4,A-00238,—,1,Mercado Pago,REF261618,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-259,030.56)",95.0,-259030.56
 04/12/2025,1151.0,setenta treinta rio cuarto,20-94396907-8,381281.04,A-00274,directo,1,Mercado Pago,REF858729,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
@@ -158,7 +158,7 @@
 05/12/2025,1080.0,COPA V RECTA,20-38267586-9,491370.19,A-00179,—,1,Banco Galicia,REF477214,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+201,977.39)",95.0,201977.39
 05/12/2025,1107.0,VALLE WINES,33-83552312-4,357786.0,A-00216,—,1,Banco Galicia,REF657783,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-60,492.36)",95.0,-60492.36
 05/12/2025,1108.0,Hacienda La Madura,23-92127799-7,498670.48,A-00217,—,1,Banco Galicia,REF747736,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-189,340.91)",95.0,-189340.91
-05/12/2025,1006.0,Belgrano Bebidas S.R.L,20-12805982-6,178259.77,A-00064,—,1,Banco Galicia,REF905459,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-4,249,803.40)",85.0,-4249803.4
+05/12/2025,1204.0,PIPO BEBIDAS,23-53693785-4,178259.77,A-00341,—,1,Banco Galicia,REF905459,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-9,727.89)",92.1,-9727.89
 05/12/2025,1118.0,VINOTECA KABALIN 434,23-21418880-5,411260.9,A-00230,—,1,Banco Galicia,REF893454,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-229,655.18)",95.0,-229655.18
 05/12/2025,1150.0,SAUL ARATANO,33-92299590-0,387317.05,A-00273,directo,1,Banco Galicia,REF519218,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
 05/12/2025,1185.0,MARIA MARIA,27-87139718-7,285599.98,A-00317,directo,1,Banco Galicia,REF123853,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
@@ -182,7 +182,7 @@
 06/12/2025,1137.0,Farra Vinoteca,27-47962757-0,464907.6,A-00254 + A-00255,suma_total,2,Mercado Pago,REF836677,match_exacto,ID exacto + suma de todas las facturas,95.0,0.0
 06/12/2025,1072.0,DRINK BOX,23-67136959-4,273721.72,A-00170,—,1,Mercado Pago,REF732789,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-902,506.81)",95.0,-902506.81
 06/12/2025,1202.0,LAS MORAS,33-77175355-6,189293.73,A-00339,directo,1,Banco Galicia,REF417012,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
-06/12/2025,1196.0,THE BARBEER,30-62462873-3,228985.95,A-00333,directo,1,Banco Galicia,REF406703,match_exacto,ID exacto + monto exacto (1:1),95.2,0.0
+06/12/2025,1196.0,THE BARBEER,30-62462873-3,228985.95,A-00333,directo,1,Banco Galicia,REF406703,probable_duda_id,"Alias fuzzy (conf 72.5%), monto coincide",72.5,0.0
 06/12/2025,1186.0,VIDON CERRO,30-28679087-4,285599.98,A-00318 + A-00319,suma_total,2,Banco Galicia,REF664139,match_exacto,ID exacto + suma de todas las facturas,95.0,0.0
 06/12/2025,1184.0,ALTO TEJEDA WARCALDE,20-91088398-2,285599.98,A-00315 + A-00316,suma_total,2,Banco Galicia,REF216683,match_exacto,ID exacto + suma de todas las facturas,95.0,0.0
 06/12/2025,1176.0,COPA V MANANTIALES,30-24004991-5,299124.14,A-00307,directo,1,Banco Galicia,REF787247,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
@@ -216,7 +216,7 @@
 07/12/2025,1043.0,Aldeano Restaurante Bar,27-08240084-2,795382.58,A-00130,—,1,Banco Galicia,REF731792,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-41,312.95)",95.0,-41312.95
 07/12/2025,1010.0,ROASIO RIO CUARTO,23-30365414-5,695030.22,A-00076,—,1,Banco Galicia,REF834591,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,416,315.59)",95.0,-1416315.59
 07/12/2025,1144.0,SYRAH RUTA 20,23-25831323-7,406979.97,A-00265 + A-00266,suma_total,2,Banco Santander,REF880746,match_exacto,ID exacto + suma de todas las facturas,95.0,0.0
-07/12/2025,1176.0,COPA V MANANTIALES,30-24004991-5,299124.14,A-00307,directo,1,Banco Santander,REF299742,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
+07/12/2025,1177.0,COPA V MANANTIALES 2,30-88728743-1,299124.14,A-00308,directo,1,Banco Santander,REF299742,match_exacto,ID exacto + monto exacto (1:1),98.4,0.0
 07/12/2025,1206.0,Puesto de Sabores,33-01006231-2,184809.75,A-00344,directo,1,Banco Santander,REF810929,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
 07/12/2025,1026.0,FRUTA NUEVA CORDOBA,30-34670656-2,387188.68,A-00103,—,1,Banco Santander,REF697062,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-380,886.30)",95.0,-380886.3
 07/12/2025,1034.0,DISTRIBUIDORA DE LA RIVA,33-50671657-2,901550.6,A-00117,—,1,Banco Santander,REF719446,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,402,449.40)",95.0,-1402449.4
@@ -234,7 +234,7 @@
 07/12/2025,1155.0,DON CAMPESTRE,23-10469632-5,369587.0,A-00280,directo,1,Mercado Pago,REF158639,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
 07/12/2025,1160.0,CIUDADANO,33-49912165-5,349166.89,A-00287,directo,1,Mercado Pago,REF649855,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
 07/12/2025,1166.0,VIDON BARRIO JARDIN,23-30913075-6,324896.66,A-00296,directo,1,Mercado Pago,REF452497,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
-07/12/2025,1106.0,Consumidor Final,33-16453521-8,193197.91,A-00214,—,1,Mercado Pago,REF375754,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-508,247.23)",95.0,-508247.23
+07/12/2025,1110.0,CONSUMIDOR FINAL NICO,33-14770054-1,193197.91,A-00219,—,1,Mercado Pago,REF375754,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-85,410.85)",96.7,-85410.85
 07/12/2025,1174.0,ARCHI,23-08267734-5,301033.56,A-00304,directo,1,Mercado Pago,REF703998,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
 07/12/2025,1076.0,OLEO,23-47451712-3,628959.3,A-00175,—,1,Mercado Pago,REF533301,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-531,501.97)",95.0,-531501.97
 07/12/2025,1074.0,Alta gracia rugby,23-39421047-0,278792.02,A-00172,—,1,Mercado Pago,REF670143,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-884,277.05)",95.0,-884277.05
@@ -273,7 +273,7 @@
 08/12/2025,1191.0,DON,30-52431069-0,378587.46,A-00327,—,1,Banco Galicia,REF724145,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+213,639.76)",95.0,213639.76
 08/12/2025,1114.0,LA CATA ALMACEN DE VINOS,30-65905151-8,332223.62,A-00224,—,1,Banco Galicia,REF135138,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-321,129.51)",95.0,-321129.51
 08/12/2025,1106.0,Consumidor Final,33-16453521-8,27002.67,A-00214,—,1,Banco Galicia,REF289473,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-674,442.47)",95.0,-674442.47
-08/12/2025,1231.0,OYE CHICO,27-61014388-8,104660.16,A-00383,directo,1,Banco Galicia,REF357657,match_exacto,ID exacto + monto exacto (1:1),94.1,0.0
+08/12/2025,1231.0,OYE CHICO,27-61014388-8,104660.16,A-00383,directo,1,Banco Galicia,REF357657,probable_duda_id,"Alias fuzzy (conf 66.0%), monto coincide",66.0,0.0
 08/12/2025,1147.0,Cafe Escondido,30-85289226-8,394130.12,A-00269,directo,1,Banco Galicia,REF245131,match_exacto,ID exacto + monto exacto (1:1),95.0,0.0
 08/12/2025,1141.0,NIDO,30-54310278-6,412749.3,A-00259 + A-00260,suma_total,2,Banco Galicia,REF901305,match_exacto,ID exacto + suma de todas las facturas,95.0,128.28
 08/12/2025,1123.0,Ramen Factory,20-24782613-7,244593.69,A-00235,—,1,Banco Galicia,REF630535,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-342,465.39)",95.0,-342465.39
@@ -303,7 +303,6 @@
 09/12/2025,1059.0,VINOTECA LA RECTA,23-48086131-7,582115.06,A-00154,—,1,Banco Santander,REF307007,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-898,225.58)",95.0,-898225.58
 09/12/2025,1055.0,SIGUR VINOTECA,27-65512567-4,174514.7,A-00148,—,1,Mercado Pago,REF806004,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-297,793.51)",95.0,-297793.51
 09/12/2025,1053.0,Chacra De Luna,33-40139904-9,575645.11,A-00146,—,1,Mercado Pago,REF910883,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,124,731.84)",95.0,-1124731.84
-09/12/2025,1062.0,DADDY BEBIDAS CORDILLERA,20-44997278-7,340845.75,A-00158,—,1,Mercado Pago,REF952117,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,017,121.37)",90.9,-1017121.37
 09/12/2025,1044.0,SUMMER HOUSE,20-09477752-0,306244.3,A-00132,—,1,Banco Santander,REF844858,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-560,425.67)",95.0,-560425.67
 09/12/2025,1012.0,CREEK HOUSE CLUB,27-56981693-4,1550883.76,A-00081,—,1,Banco Galicia,REF369125,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+202,717.66)",95.0,202717.66
 09/12/2025,1050.0,CLIN VINOTECA general paz,23-49361832-4,236808.89,A-00142,—,1,Mercado Pago,REF922116,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,550,503.62)",95.0,-1550503.62
@@ -318,7 +317,7 @@
 10/12/2025,1003.0,NPJ,33-41241182-4,5233870.84,A-00053,—,1,Mercado Pago,REF916808,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+922,168.95)",95.0,922168.95
 10/12/2025,1075.0,Lu Jaitt Wedding,23-14562328-5,215200.36,A-00173,—,1,Mercado Pago,REF783226,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-140,719.39)",95.0,-140719.39
 10/12/2025,1085.0,BRANDY ALTA GRACIA,23-28421020-5,461877.94,A-00186,—,1,Mercado Pago,REF701581,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+118,327.41)",95.0,118327.41
-10/12/2025,1106.0,Consumidor Final,33-16453521-8,181902.11,A-00214,—,1,Mercado Pago,REF755698,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-519,543.03)",95.0,-519543.03
+10/12/2025,1110.0,CONSUMIDOR FINAL NICO,33-14770054-1,181902.11,A-00219,—,1,Mercado Pago,REF755698,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-96,706.65)",96.7,-96706.65
 10/12/2025,1096.0,BLEND BEBIDAS RIO CUARTO,33-99809402-4,327836.38,A-00203,—,1,Mercado Pago,REF635239,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-615,650.11)",95.0,-615650.11
 10/12/2025,1095.0,GURUPA,30-31585149-3,218721.37,A-00202,—,1,Mercado Pago,REF949363,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-730,221.38)",95.0,-730221.38
 10/12/2025,1091.0,Tomis distribuidora,30-73657661-5,214141.38,A-00196,—,1,Mercado Pago,REF237509,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-755,863.58)",95.0,-755863.58
@@ -350,7 +349,7 @@
 11/12/2025,1015.0,DISTRIBUIDORA SUR.,30-62994680-4,292158.2,A-00087,—,1,Banco Galicia,REF909652,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,964,185.41)",85.0,-1964185.41
 11/12/2025,1063.0,NEGRONI,27-88675339-6,374382.5,A-00159,—,1,Banco Galicia,REF785672,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-925,654.26)",95.0,-925654.26
 11/12/2025,1093.0,TIJUANA,27-28098851-6,459577.7,A-00199,—,1,Banco Galicia,REF241003,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+8,586.29)",95.0,8586.29
-11/12/2025,1078.0,OCASO BAR,33-65137098-5,312697.85,A-00177,—,1,Banco Santander,REF729402,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-816,986.92)",91.7,-816986.92
+11/12/2025,1078.0,OCASO BAR,33-65137098-5,312697.85,A-00177,—,1,Banco Santander,REF729402,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-816,986.92)",100.0,-816986.92
 11/12/2025,1082.0,SUSHI ROLL TO GO,23-51585064-3,362685.96,A-00183,—,1,Banco Santander,REF907369,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-683,875.81)",95.0,-683875.81
 11/12/2025,1089.0,dionisio II,20-15921249-9,455852.54,A-00193,—,1,Banco Santander,REF497859,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-551,573.16)",95.0,-551573.16
 11/12/2025,1102.0,TESKA,23-44510762-2,197773.24,A-00210,—,1,Banco Santander,REF979249,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-630,108.49)",95.0,-630108.49
@@ -373,7 +372,6 @@
 12/12/2025,1005.0,CHILLI STREET CLUB,27-00524278-6,1364024.69,A-00060,—,1,Banco Galicia,REF223791,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,135,201.43)",95.0,-1135201.43
 12/12/2025,1086.0,LA TABERNA RIO CUARTO,33-50240268-1,426509.55,A-00188,—,1,Banco Galicia,REF263573,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-599,496.30)",95.0,-599496.3
 12/12/2025,1040.0,VINOTECA PEDROS,30-88568557-4,340798.77,A-00126,—,1,Mercado Pago,REF272129,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-708,483.87)",95.0,-708483.87
-12/12/2025,1029.0,Eduardo bruno v maria,27-64170805-3,704337.95,A-00109,—,1,Mercado Pago,REF823255,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,943,246.05)",92.3,-1943246.05
 12/12/2025,1052.0,cassette,30-48877190-6,179168.56,A-00145,—,1,Mercado Pago,REF639292,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,554,642.23)",95.0,-1554642.23
 12/12/2025,1036.0,SEBASTIAN ESTRELLA,23-14737996-5,213356.83,A-00120,—,1,Banco Santander,REF503572,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-417,980.23)",95.0,-417980.23
 12/12/2025,1039.0,Michelle Catering,30-70143634-9,545683.35,A-00125,—,1,Banco Santander,REF687360,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,622,351.78)",95.0,-1622351.78
@@ -419,22 +417,21 @@
 14/12/2025,1028.0,EL ZORRO,30-20465375-5,435017.56,A-00107,—,1,Mercado Pago,REF718337,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-223,434.91)",95.0,-223434.91
 14/12/2025,1029.0,Eduardo bruno v maria,27-64170805-3,282533.93,A-00109,—,1,Mercado Pago,REF673867,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-2,365,050.07)",95.0,-2365050.07
 14/12/2025,1032.0,UNPLUGGED,20-90496631-9,275745.84,A-00113,—,1,Mercado Pago,REF993385,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-620,293.73)",95.0,-620293.73
-14/12/2025,1094.0,LA REINA EMPANADAS,30-04945198-3,381603.21,A-00201,—,1,Mercado Pago,REF517754,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-568,189.41)",94.1,-568189.41
 14/12/2025,1048.0,Route 66,23-34123281-2,455086.06,A-00139,—,1,Mercado Pago,REF286044,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-446,479.67)",95.0,-446479.67
 14/12/2025,1050.0,CLIN VINOTECA general paz,23-49361832-4,377172.91,A-00142,—,1,Mercado Pago,REF650916,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,410,139.60)",95.0,-1410139.6
 14/12/2025,1065.0,DRINKS BARRIO JARDIN,20-71870262-1,224854.54,A-00162,—,1,Mercado Pago,REF975427,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,058,601.60)",95.0,-1058601.6
 14/12/2025,1072.0,DRINK BOX,23-67136959-4,345271.92,A-00170,—,1,Mercado Pago,REF101258,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-830,956.61)",95.0,-830956.61
 14/12/2025,1073.0,OSLOW,20-64090974-3,305749.36,A-00171,—,1,Mercado Pago,REF906010,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-866,436.28)",95.0,-866436.28
 14/12/2025,1075.0,Lu Jaitt Wedding,23-14562328-5,312374.69,A-00173,—,1,Mercado Pago,REF373995,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-43,545.06)",95.0,-43545.06
-14/12/2025,1079.0,MONJE NEGRO,20-74612004-7,284526.97,A-00178,—,1,Mercado Pago,REF560295,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-804,196.28)",90.9,-804196.28
+14/12/2025,1079.0,MONJE NEGRO,20-74612004-7,284526.97,A-00178,—,1,Mercado Pago,REF560295,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-804,196.28)",100.0,-804196.28
 14/12/2025,1084.0,ANONIMO MANANTIALES,20-83933529-0,352798.78,A-00185,—,1,Mercado Pago,REF376142,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-677,636.95)",95.0,-677636.95
 14/12/2025,1049.0,tomas quiroga,30-79740344-7,490476.74,A-00141,—,1,Mercado Pago,REF446620,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,330,206.91)",95.0,-1330206.91
 14/12/2025,1006.0,Belgrano Bebidas S.R.L,20-12805982-6,2622206.17,A-00064,—,1,Banco Galicia,REF999138,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,805,857.00)",95.0,-1805857.0
 14/12/2025,1078.0,OCASO BAR,33-65137098-5,295152.32,A-00177,—,1,Banco Santander,REF167193,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-834,532.45)",95.0,-834532.45
-14/12/2025,1026.0,FRUTA NUEVA CORDOBA,30-34670656-2,243492.97,A-00103,—,1,Banco Santander,REF250181,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-524,582.01)",82.9,-524582.01
+14/12/2025,1026.0,FRUTA NUEVA CORDOBA,30-34670656-2,243492.97,A-00103,—,1,Banco Santander,REF250181,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-524,582.01)",97.8,-524582.01
 14/12/2025,1030.0,MARQUEZ VINOS Y LICORES,20-03309232-7,451420.64,A-00110,—,1,Banco Santander,REF309452,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-367,856.42)",95.0,-367856.42
 14/12/2025,1034.0,DISTRIBUIDORA DE LA RIVA,33-50671657-2,339041.36,A-00117,—,1,Banco Santander,REF917012,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,964,958.64)",95.0,-1964958.64
-15/12/2025,1041.0,DISTRIBUIDORA MARCONI,27-31351823-3,253170.89,A-00128,—,1,Banco Galicia,REF790441,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,864,389.03)",95.2,-1864389.03
+15/12/2025,1041.0,DISTRIBUIDORA MARCONI,27-31351823-3,253170.89,A-00128,—,1,Banco Galicia,REF790441,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,864,389.03)",100.0,-1864389.03
 15/12/2025,1037.0,DAV COUNTRY,30-52735454-9,331718.08,A-00122,—,1,Banco Galicia,REF497030,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,905,776.90)",95.0,-1905776.9
 15/12/2025,1021.0,ALMACEN 1810,30-98687277-4,345164.61,A-00096,—,1,Banco Galicia,REF581294,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,421,712.84)",95.0,-1421712.84
 15/12/2025,1011.0,ROSARIO,33-50142940-1,764342.2,A-00078,—,1,Banco Galicia,REF421727,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,300,471.81)",95.0,-1300471.81
@@ -464,7 +461,7 @@
 16/12/2025,1055.0,SIGUR VINOTECA,27-65512567-4,114544.87,A-00148,—,1,Mercado Pago,REF748386,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-357,763.34)",95.0,-357763.34
 16/12/2025,1031.0,LA FABRICA,33-37452991-2,219753.06,A-00112,—,1,Mercado Pago,REF368322,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-2,174,453.55)",95.0,-2174453.55
 16/12/2025,1022.0,bamboo eventos,27-87347143-4,720528.57,A-00098,—,1,Mercado Pago,REF390334,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-2,777,348.12)",95.0,-2777348.12
-17/12/2025,1106.0,Consumidor Final,33-16453521-8,326345.12,A-00214,—,1,Mercado Pago,REF901676,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-375,100.02)",95.0,-375100.02
+17/12/2025,1110.0,CONSUMIDOR FINAL NICO,33-14770054-1,326345.12,A-00219,—,1,Mercado Pago,REF901676,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $+47,736.36)",96.7,47736.36
 17/12/2025,1070.0,Way Out Producciones,30-92374740-7,259889.11,A-00168,—,1,Banco Santander,REF933215,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-953,076.73)",95.0,-953076.73
 17/12/2025,1027.0,VINOTECA LA FALDA,23-98069901-6,474098.29,A-00105,—,1,Banco Galicia,REF147939,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-406,393.96)",95.0,-406393.96
 17/12/2025,1001.0,RPB S.A,20-79911838-4,4400707.16,A-00027 + A-00028 + A-00029 + A-00032 + A-00031,suma_parcial,5,Mercado Pago,REF489906,match_exacto,ID exacto + suma de 5 facturas,95.0,18769.97
@@ -496,7 +493,7 @@
 19/12/2025,1042.0,CATCH,27-98941343-5,441660.41,A-00129,—,1,Banco Santander,REF437477,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,616,692.46)",95.0,-1616692.46
 19/12/2025,1077.0,farmacia sanchez antoniolli,33-51604817-5,455657.61,A-00176,—,1,Banco Santander,REF884140,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-676,178.13)",85.0,-676178.13
 19/12/2025,1026.0,FRUTA NUEVA CORDOBA,30-34670656-2,364948.99,A-00103,—,1,Banco Santander,REF850432,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-403,125.99)",95.0,-403125.99
-19/12/2025,1018.0,CARAVANA - RIO CUARTO,23-00379176-9,462236.34,A-00093,—,1,Mercado Pago,REF339030,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-3,622,230.67)",85.0,-3622230.67
+19/12/2025,1018.0,CARAVANA - RIO CUARTO,23-00379176-9,462236.34,A-00093,—,1,Mercado Pago,REF339030,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-3,622,230.67)",88.5,-3622230.67
 19/12/2025,1045.0,ucfa,30-11671902-2,322796.97,A-00134,—,1,Banco Galicia,REF309612,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-514,937.62)",95.0,-514937.62
 19/12/2025,1012.0,CREEK HOUSE CLUB,27-56981693-4,144271.42,A-00081,—,1,Banco Galicia,REF540038,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,203,894.68)",95.0,-1203894.68
 19/12/2025,1010.0,ROASIO RIO CUARTO,23-30365414-5,685821.98,A-00076,—,1,Banco Galicia,REF614259,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,425,523.83)",95.0,-1425523.83
@@ -554,7 +551,7 @@
 26/12/2025,1000.0,PRITTY,27-35346247-5,6853674.63,A-00005 + A-00008 + A-00012 + A-00014,suma_parcial,4,Mercado Pago,REF660384,match_exacto,ID exacto + suma de 4 facturas,95.0,-11936.26
 26/12/2025,1051.0,GRAPPA,20-02499471-7,223535.88,A-00143,—,1,Mercado Pago,REF567315,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-153,323.05)",95.0,-153323.05
 26/12/2025,1015.0,DISTRIBUIDORA SUR.,30-62994680-4,304018.73,A-00087,—,1,Mercado Pago,REF626491,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,952,324.88)",95.0,-1952324.88
-26/12/2025,1019.0,JANGADERO EX SHADDY,30-76320163-2,373306.69,A-00094,—,1,Mercado Pago,REF282176,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-3,413,619.94)",94.4,-3413619.94
+26/12/2025,1019.0,JANGADERO EX SHADDY,30-76320163-2,373306.69,A-00094,—,1,Mercado Pago,REF282176,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-3,413,619.94)",84.6,-3413619.94
 27/12/2025,1043.0,Aldeano Restaurante Bar,27-08240084-2,213142.77,A-00130,—,1,Banco Galicia,REF680472,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-623,552.76)",95.0,-623552.76
 27/12/2025,1003.0,NPJ,33-41241182-4,1360301.28,A-00052,—,1,Mercado Pago,REF932336,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-865,660.60)",95.0,-865660.6
 27/12/2025,1002.0,BONPRIX,27-13542784-9,9618751.39,A-00040 + A-00042 + A-00046,suma_parcial,3,Mercado Pago,REF108886,match_exacto,ID exacto + suma de 3 facturas,95.0,44830.74
@@ -602,7 +599,7 @@
 30/12/2025,1001.0,RPB S.A,20-79911838-4,2279981.82,A-00027 + A-00032 + A-00033 + A-00036,suma_parcial,4,Mercado Pago,REF345517,match_exacto,ID exacto + suma de 4 facturas,95.0,-10039.96
 30/12/2025,1000.0,PRITTY,27-35346247-5,9149598.16,A-00006 + A-00008 + A-00016,suma_parcial,3,Mercado Pago,REF706007,match_exacto,ID exacto + suma de 3 facturas,95.0,2480.58
 30/12/2025,1015.0,DISTRIBUIDORA SUR.,30-62994680-4,417360.77,A-00087,—,1,Mercado Pago,REF641922,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,838,982.84)",95.0,-1838982.84
-30/12/2025,1014.0,EL CUARTITO,20-48465648-2,242174.75,A-00085,—,1,Banco Galicia,REF258471,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,410,125.30)",95.2,-1410125.3
+30/12/2025,1014.0,EL CUARTITO,20-48465648-2,242174.75,A-00085,—,1,Banco Galicia,REF258471,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,410,125.30)",91.7,-1410125.3
 30/12/2025,1011.0,ROSARIO,33-50142940-1,305439.09,A-00078,—,1,Banco Galicia,REF948095,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-1,759,374.92)",95.0,-1759374.92
 30/12/2025,1008.0,E24,33-23226025-6,327018.5,A-00070,—,1,Banco Galicia,REF583388,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-2,772,100.39)",95.0,-2772100.39
 30/12/2025,1008.0,E24,33-23226025-6,479669.98,A-00070,—,1,Banco Galicia,REF701761,probable_dif_cambio,"ID exacto, sin coincidencia de monto (mejor dif $-2,619,448.91)",95.0,-2619448.91
