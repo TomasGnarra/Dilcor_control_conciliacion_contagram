@@ -7,7 +7,6 @@ import streamlit as st
 import pandas as pd
 import os
 import io
-
 from src.motor_conciliacion import MotorConciliacion
 from src.matcher import MATCH_CONFIG
 
@@ -571,7 +570,7 @@ if data_ready:
         # ═══ TABS DE DETALLE ═══
         st.markdown("---")
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "Por Banco", "Cobranzas", "Pagos", "Excepciones", "Detalle Completo"
+            "Por Banco", "Cobranzas", "Pagos", "Excepciones", "Detalle Completo",
         ])
 
         with tab1:
@@ -712,3 +711,51 @@ elif modo == "Manual (subir archivos)":
     st.info("Suba los archivos requeridos en las pestanas de arriba para comenzar.")
 else:
     st.warning("No se encontraron datos de demostracion. Ejecute `python generar_datos_test.py` primero.")
+
+
+# ═══════════════════════════════════════════════════════
+# ASISTENTE DE CONCILIACION (Gemini Chat)
+# ═══════════════════════════════════════════════════════
+
+# Display chat history
+for msg in st.session_state.get("chat_history", []):
+    role = "user" if msg["role"] == "user" else "assistant"
+    with st.chat_message(role):
+        st.markdown(msg["parts"][0]["text"])
+
+# Chat input - pinned at the bottom of the viewport by Streamlit
+if prompt := st.chat_input("Preguntale al asistente sobre la conciliacion..."):
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = []
+    st.session_state["chat_history"].append(
+        {"role": "user", "parts": [{"text": prompt}]}
+    )
+
+    _gkey = None
+    try:
+        _gkey = st.secrets["google"]["api_key"]
+    except Exception:
+        _gkey = os.environ.get("GOOGLE_API_KEY")
+
+    if _gkey and "stats" in st.session_state:
+        try:
+            from src.chatbot import crear_cliente, chat_responder
+            if "gemini_client" not in st.session_state:
+                st.session_state["gemini_client"] = crear_cliente(_gkey)
+            _resp = chat_responder(
+                st.session_state["gemini_client"],
+                st.session_state["stats"],
+                st.session_state["chat_history"][:-1],
+                prompt,
+            )
+        except Exception as e:
+            _resp = f"Error al consultar el asistente: {e}"
+    elif not _gkey:
+        _resp = "Configura tu API key de Google Gemini en `.streamlit/secrets.toml` para habilitar el asistente."
+    else:
+        _resp = "Ejecuta la conciliacion primero para que pueda responder preguntas sobre los resultados."
+
+    st.session_state["chat_history"].append(
+        {"role": "model", "parts": [{"text": _resp}]}
+    )
+    st.rerun()
