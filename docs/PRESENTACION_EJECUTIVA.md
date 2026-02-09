@@ -81,7 +81,31 @@ El operador solo necesita:
 
 ---
 
-### Slide 6: Que Genera el Sistema
+### Slide 6: Motor de Matching Inteligente (rapidfuzz)
+
+**El sistema "lee" las descripciones bancarias como lo haria un humano.**
+
+Los bancos escriben los nombres de formas impredecibles. El motor usa la libreria **rapidfuzz** para reconocer al cliente aunque el nombre este distinto:
+
+| El banco dice... | El sistema entiende... | Como lo resuelve |
+|-----------------|----------------------|-----------------|
+| `MERPAG*PRITTY-RET` | PRITTY SA | Limpia simbolos y busca coincidencia parcial |
+| `TRANSF DEBIN PRITTY DISTRIB` | PRITTY SA | Ignora palabras extra (TRANSF, DEBIN, DISTRIB) |
+| `PRITY` (con error de tipeo) | Probablemente PRITTY | Detecta similitud parcial → marca como "Duda de ID" |
+| `COCA COLA ANDINA` vs `ANDINA COCA COLA` | Mismo proveedor | Compara palabras sin importar el orden |
+
+**3 algoritmos combinados con pesos:**
+- **45%** token_set_ratio → ignora orden y palabras extra
+- **30%** token_sort_ratio → compara palabras ordenadas
+- **25%** partial_ratio → detecta nombres cortados o abreviados
+
+**Resultado:** Score de 0% a 100%. Si >= 80% = Match Exacto. Si >= 55% = Duda de ID. Si < 55% = No Match.
+
+**Beneficio clave:** No hace falta poner cada variacion en la tabla parametrica. Con un solo alias, el sistema reconoce las variantes automaticamente.
+
+---
+
+### Slide 7: Que Genera el Sistema
 
 | Archivo | Para que sirve | Donde se importa en Contagram |
 |---------|---------------|-------------------------------|
@@ -91,7 +115,7 @@ El operador solo necesita:
 
 ---
 
-### Slide 7: Dashboard de Impacto Financiero
+### Slide 8: Dashboard de Impacto Financiero
 
 El dashboard se organiza en **dos bloques**:
 
@@ -118,7 +142,7 @@ El dashboard se organiza en **dos bloques**:
 
 ---
 
-### Slide 8: La Tabla Parametrica (el "cerebro")
+### Slide 9: La Tabla Parametrica (el "cerebro")
 
 Es un archivo simple que el contador mantiene:
 
@@ -137,7 +161,7 @@ Con el tiempo, cada vez menos excepciones. El sistema "aprende" por agregado de 
 
 ---
 
-### Slide 9: No se Toca Contagram
+### Slide 10: No se Toca Contagram
 
 - No se instala nada en Contagram
 - No se necesitan APIs ni accesos especiales
@@ -148,7 +172,7 @@ Con el tiempo, cada vez menos excepciones. El sistema "aprende" por agregado de 
 
 ---
 
-### Slide 10: Ahorro Concreto
+### Slide 11: Ahorro Concreto
 
 | Concepto | Sin sistema | Con sistema |
 |----------|------------|-------------|
@@ -161,7 +185,7 @@ Con el tiempo, cada vez menos excepciones. El sistema "aprende" por agregado de 
 
 ---
 
-### Slide 11: Evolucion del Producto
+### Slide 12: Evolucion del Producto
 
 ```
 HOY                    PROXIMO PASO              VISION
@@ -179,7 +203,7 @@ Estado: LISTO          Tiempo: 2-3 semanas       Tiempo: 1-2 meses
 
 ---
 
-### Slide 12: Proximos Pasos
+### Slide 13: Proximos Pasos
 
 1. **Validar** el MVP con un mes real completo
 2. **Ajustar** la tabla parametrica con datos reales de los bancos
