@@ -1,4 +1,4 @@
-tipo,nombre_contagram,alias_banco,cuit,id_contagram,banco_principal,monto_mensual
+pip install -r requirements.txttipo,nombre_contagram,alias_banco,cuit,id_contagram,banco_principal,monto_mensual
 Cliente,PRITTY,MERPAG*PRITTY,27-35346247-5,1000,mercadopago,97313040.0
 Cliente,RPB S.A,MP*RPB S.A,20-79911838-4,1001,mercadopago,67715109.0
 Cliente,BONPRIX,MERPAG*BONPRIX,27-13542784-9,1002,mercadopago,58046939.4
