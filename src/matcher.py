@@ -10,7 +10,7 @@ Umbrales configurables vía diccionario MATCH_CONFIG.
 """
 import pandas as pd
 import re
-from difflib import SequenceMatcher
+from src.fuzzy_matcher import calcular_similitud
 
 
 # ─── UMBRALES CONFIGURABLES ─────────────────────────────────────────
@@ -35,14 +35,8 @@ def get_config(key: str) -> float:
 
 
 def _similitud(a: str, b: str) -> float:
-    """Calcula similitud entre dos strings (0 a 1)."""
-    if not a or not b:
-        return 0.0
-    a = a.upper().strip()
-    b = b.upper().strip()
-    if a == b:
-        return 1.0
-    return SequenceMatcher(None, a, b).ratio()
+    """Calcula similitud entre dos strings (0 a 1). Usa rapidfuzz."""
+    return calcular_similitud(a, b)
 
 
 def _extraer_nombre_banco(descripcion: str) -> str:
