@@ -1,10 +1,14 @@
 """
 Asistente de conciliacion bancaria basado en Gemini Flash.
-Responde preguntas contextuales sobre los resultados de la conciliacion.
+Usa API REST directa (sin SDK pesado) para maxima compatibilidad.
 
 Requiere GOOGLE_API_KEY en secrets o variable de entorno.
 """
-from google import genai
+import json
+import urllib.request
+import urllib.error
+
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 GLOSARIO = """
 ## Glosario de terminos
@@ -93,17 +97,17 @@ Reglas:
 """
 
 
-def crear_cliente(api_key: str) -> genai.Client:
-    """Crea el cliente de Gemini con la API key."""
-    return genai.Client(api_key=api_key)
+def crear_cliente(api_key: str) -> str:
+    """Retorna la API key (compatibilidad con la interfaz anterior)."""
+    return api_key
 
 
-def chat_responder(client: genai.Client, stats: dict, historial: list, pregunta: str) -> str:
+def chat_responder(api_key: str, stats: dict, historial: list, pregunta: str) -> str:
     """
-    Envia una pregunta al asistente y devuelve la respuesta.
+    Envia una pregunta al asistente via API REST y devuelve la respuesta.
 
     Args:
-        client: Cliente de Gemini inicializado
+        api_key: Google API key
         stats: Diccionario de estadisticas de la conciliacion actual
         historial: Lista de dicts con {"role": "user"|"model", "parts": [{"text": "..."}]}
         pregunta: Pregunta del usuario
@@ -113,28 +117,50 @@ def chat_responder(client: genai.Client, stats: dict, historial: list, pregunta:
     """
     system_prompt = _build_system_prompt(stats)
 
-    # Construir mensajes para la API
+    # Construir contenido del chat
     contents = []
     for msg in historial:
-        contents.append(genai.types.Content(
-            role=msg["role"],
-            parts=[genai.types.Part(text=msg["parts"][0]["text"])]
-        ))
+        contents.append({
+            "role": msg["role"],
+            "parts": [{"text": msg["parts"][0]["text"]}]
+        })
 
     # Agregar pregunta actual
-    contents.append(genai.types.Content(
-        role="user",
-        parts=[genai.types.Part(text=pregunta)]
-    ))
+    contents.append({
+        "role": "user",
+        "parts": [{"text": pregunta}]
+    })
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=contents,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=0.3,
-            max_output_tokens=1024,
-        ),
+    # Payload para la API REST
+    payload = {
+        "system_instruction": {
+            "parts": [{"text": system_prompt}]
+        },
+        "contents": contents,
+        "generationConfig": {
+            "temperature": 0.3,
+            "maxOutputTokens": 1024,
+        }
+    }
+
+    url = f"{GEMINI_URL}?key={api_key}"
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
 
-    return response.text
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Gemini API error {e.code}: {body}") from e
+
+    # Extraer texto de la respuesta
+    try:
+        return result["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        raise RuntimeError(f"Respuesta inesperada de Gemini: {json.dumps(result, indent=2)}")
