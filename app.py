@@ -7,7 +7,6 @@ import streamlit as st
 import pandas as pd
 import os
 import io
-
 from src.motor_conciliacion import MotorConciliacion
 from src.matcher import MATCH_CONFIG
 
@@ -570,9 +569,8 @@ if data_ready:
 
         # ═══ TABS DE DETALLE ═══
         st.markdown("---")
-        tab1, tab2, tab3, tab4, tab5, tab_chat = st.tabs([
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "Por Banco", "Cobranzas", "Pagos", "Excepciones", "Detalle Completo",
-            "🤖 Asistente"
         ])
 
         with tab1:
@@ -659,73 +657,6 @@ if data_ready:
             cols_ok = [c for c in cols if c in df_full.columns]
             st.dataframe(df_full[cols_ok], use_container_width=True, hide_index=True)
 
-        with tab_chat:
-            st.markdown("### Asistente de Conciliacion")
-            st.caption("Preguntale al asistente sobre los resultados, que significan los KPIs o que acciones tomar.")
-
-            # Verificar API key
-            google_api_key = None
-            try:
-                google_api_key = st.secrets["google"]["api_key"]
-            except Exception:
-                pass
-            if not google_api_key:
-                google_api_key = os.environ.get("GOOGLE_API_KEY")
-
-            if not google_api_key:
-                st.info("Para habilitar el asistente, configura tu API key de Google Gemini:")
-                st.code("""# En .streamlit/secrets.toml agregar:
-[google]
-api_key = "TU_GOOGLE_API_KEY"
-
-# O como variable de entorno:
-# export GOOGLE_API_KEY="TU_GOOGLE_API_KEY"
-""", language="toml")
-                st.markdown("[Obtener API key gratis en Google AI Studio](https://aistudio.google.com/apikey)")
-            else:
-                from src.chatbot import crear_cliente, chat_responder
-
-                # Inicializar cliente y historial en session_state
-                if "gemini_client" not in st.session_state:
-                    st.session_state["gemini_client"] = crear_cliente(google_api_key)
-                if "chat_history" not in st.session_state:
-                    st.session_state["chat_history"] = []
-
-                # Mostrar historial
-                for msg in st.session_state["chat_history"]:
-                    role = "user" if msg["role"] == "user" else "assistant"
-                    with st.chat_message(role):
-                        st.markdown(msg["parts"][0]["text"])
-
-                # Input del usuario
-                if pregunta := st.chat_input("Ej: Que significa Dif. de Cambio?"):
-                    # Mostrar pregunta
-                    with st.chat_message("user"):
-                        st.markdown(pregunta)
-
-                    # Obtener respuesta
-                    with st.chat_message("assistant"):
-                        with st.spinner("Pensando..."):
-                            try:
-                                respuesta = chat_responder(
-                                    st.session_state["gemini_client"],
-                                    stats,
-                                    st.session_state["chat_history"],
-                                    pregunta,
-                                )
-                                st.markdown(respuesta)
-                            except Exception as e:
-                                respuesta = f"Error al consultar Gemini: {e}"
-                                st.error(respuesta)
-
-                    # Guardar en historial
-                    st.session_state["chat_history"].append(
-                        {"role": "user", "parts": [{"text": pregunta}]}
-                    )
-                    st.session_state["chat_history"].append(
-                        {"role": "model", "parts": [{"text": respuesta}]}
-                    )
-
         # ═══ PERSISTENCIA TIDB ═══
         st.markdown("---")
         col_db, col_steps = st.columns([1, 2])
@@ -780,3 +711,51 @@ elif modo == "Manual (subir archivos)":
     st.info("Suba los archivos requeridos en las pestanas de arriba para comenzar.")
 else:
     st.warning("No se encontraron datos de demostracion. Ejecute `python generar_datos_test.py` primero.")
+
+
+# ═══════════════════════════════════════════════════════
+# ASISTENTE DE CONCILIACION (Gemini Chat)
+# ═══════════════════════════════════════════════════════
+
+# Display chat history
+for msg in st.session_state.get("chat_history", []):
+    role = "user" if msg["role"] == "user" else "assistant"
+    with st.chat_message(role):
+        st.markdown(msg["parts"][0]["text"])
+
+# Chat input - pinned at the bottom of the viewport by Streamlit
+if prompt := st.chat_input("Preguntale al asistente sobre la conciliacion..."):
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = []
+    st.session_state["chat_history"].append(
+        {"role": "user", "parts": [{"text": prompt}]}
+    )
+
+    _gkey = None
+    try:
+        _gkey = st.secrets["google"]["api_key"]
+    except Exception:
+        _gkey = os.environ.get("GOOGLE_API_KEY")
+
+    if _gkey and "stats" in st.session_state:
+        try:
+            from src.chatbot import crear_cliente, chat_responder
+            if "gemini_client" not in st.session_state:
+                st.session_state["gemini_client"] = crear_cliente(_gkey)
+            _resp = chat_responder(
+                st.session_state["gemini_client"],
+                st.session_state["stats"],
+                st.session_state["chat_history"][:-1],
+                prompt,
+            )
+        except Exception as e:
+            _resp = f"Error al consultar el asistente: {e}"
+    elif not _gkey:
+        _resp = "Configura tu API key de Google Gemini en `.streamlit/secrets.toml` para habilitar el asistente."
+    else:
+        _resp = "Ejecuta la conciliacion primero para que pueda responder preguntas sobre los resultados."
+
+    st.session_state["chat_history"].append(
+        {"role": "model", "parts": [{"text": _resp}]}
+    )
+    st.rerun()
