@@ -136,17 +136,104 @@ def normalizar_mercadopago(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def _parse_fecha_santander_real(valor):
+    """Parsea fecha de Santander real - serial Excel o string DD/MM/YYYY."""
+    if pd.isna(valor):
+        return pd.NaT
+    if isinstance(valor, (int, float)):
+        return pd.Timestamp("1899-12-30") + pd.Timedelta(days=int(valor))
+    return pd.to_datetime(str(valor), dayfirst=True, errors="coerce")
+
+
+def _extraer_datos_transferencia(desc: str) -> tuple:
+    """Extrae nombre y CUIT de una descripcion de transferencia bancaria.
+    Patterns:
+      'Transferencia Recibida  - De Magueteco S.a.s. / - Var / 30718850289'
+      'Transf Recibida Cvu Dif Titular  - De Pizza Italia Srl / Mercado Pago /30715023853'
+    """
+    desc = str(desc)
+    nombre = None
+    cuit = None
+
+    # Pattern: "De NOMBRE / ... / CUIT"
+    m = re.search(r'De\s+(.+?)\s*/.*?(\d{11})', desc)
+    if m:
+        nombre = m.group(1).strip()
+        cuit = m.group(2)
+        return nombre, cuit
+
+    # Pattern: "De NOMBRE / CUIT" (sin detalles intermedios)
+    m = re.search(r'De\s+(.+?)\s*/\s*(\d{11})', desc)
+    if m:
+        nombre = m.group(1).strip()
+        cuit = m.group(2)
+        return nombre, cuit
+
+    # Solo CUIT si presente
+    m = re.search(r'(\d{11})', desc)
+    if m:
+        cuit = m.group(1)
+
+    return nombre, cuit
+
+
+def normalizar_santander_real(df: pd.DataFrame) -> pd.DataFrame:
+    """Normaliza extracto real de Banco Santander (XLSX con headers no estandar).
+
+    Formato detectado: 6 columnas (Fecha|Sucursal|CodTx|NroMov|Descripcion|Importe)
+    con fechas mixtas (serial Excel + strings DD/MM/YYYY) y CUIT en descripciones.
+    """
+    df = df.copy()
+
+    # Mapear columnas por posicion (headers no limpios)
+    col_map = {}
+    for i, col in enumerate(df.columns):
+        col_map[col] = ["fecha_raw", "sucursal", "cod_transaccion",
+                        "nro_comprobante", "descripcion", "importe"][i]
+    df = df.rename(columns=col_map)
+
+    rows = []
+    for _, r in df.iterrows():
+        fecha = _parse_fecha_santander_real(r["fecha_raw"])
+        importe = float(r["importe"])
+        tipo = "CREDITO" if importe >= 0 else "DEBITO"
+
+        desc = str(r["descripcion"])
+        nombre_extraido, cuit_extraido = _extraer_datos_transferencia(desc)
+
+        rows.append({
+            "fecha": fecha,
+            "banco": "Banco Santander",
+            "tipo": tipo,
+            "descripcion": desc,
+            "descripcion_normalizada": _limpiar_texto(desc),
+            "monto": round(abs(importe), 2),
+            "referencia": str(int(r["nro_comprobante"])) if pd.notna(r["nro_comprobante"]) else "",
+            "sucursal": str(r.get("sucursal", "")),
+            "cod_transaccion": int(r.get("cod_transaccion", 0)),
+            "cuit_banco": cuit_extraido or "",
+            "nombre_banco_extraido": nombre_extraido or "",
+        })
+    return pd.DataFrame(rows)
+
+
 NORMALIZADORES = {
     "galicia": normalizar_galicia,
     "santander": normalizar_santander,
+    "santander_real": normalizar_santander_real,
     "mercadopago": normalizar_mercadopago,
 }
 
 
 def detectar_banco(df: pd.DataFrame) -> str:
-    """Detecta automáticamente el banco según las columnas del archivo."""
+    """Detecta automaticamente el banco segun las columnas del archivo."""
     cols = [c.lower().strip() for c in df.columns]
     cols_str = " ".join(cols)
+
+    # Santander real: primera columna contiene "movimientos" y tiene 6 columnas
+    if len(df.columns) == 6 and "movimientos" in cols[0]:
+        return "santander_real"
+
     if "debito" in cols_str and "credito" in cols_str:
         return "galicia"
     if "fecha operacion" in cols_str or "nro comprobante" in cols_str:

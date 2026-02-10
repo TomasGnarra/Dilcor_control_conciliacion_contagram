@@ -214,7 +214,7 @@ with st.sidebar:
     }
 
     st.markdown("---")
-    st.caption("Dilcor v2.1 MVP | 2025")
+    st.caption("Dilcor v3.0 MVP | 2025")
 
 
 # --- Helpers ---
@@ -239,73 +239,83 @@ def load_demo_data():
     return extractos, ventas, compras, tabla_param
 
 
+def _leer_archivo(uploaded_file):
+    """Lee CSV o XLSX segun extension."""
+    if uploaded_file is None:
+        return pd.DataFrame()
+    name = uploaded_file.name.lower()
+    if name.endswith(".xlsx") or name.endswith(".xls"):
+        return pd.read_excel(uploaded_file)
+    return pd.read_csv(uploaded_file)
+
+
 def load_manual_data():
-    """Interfaz con tabs por banco para subir archivos."""
+    """Interfaz con tabs por banco para subir archivos (CSV + XLSX)."""
     st.markdown("### Cargar Archivos")
-    tab_g, tab_s, tab_mp, tab_otro, tab_ctg = st.tabs([
-        "Banco Galicia", "Banco Santander", "Mercado Pago", "Otro Banco", "Datos Contagram"
-    ])
+    tab_banco, tab_ctg = st.tabs(["Extracto Bancario", "Ventas Contagram"])
 
     extractos = []
-    with tab_g:
-        st.markdown("**Extracto Banco Galicia** (CSV con Fecha, Descripcion, Debito, Credito, Saldo)")
-        f_g = st.file_uploader("Subir extracto Galicia", type=["csv"], key="galicia")
-        if f_g:
-            extractos.append(pd.read_csv(f_g))
-            st.success(f"Galicia: {f_g.name} cargado")
+    with tab_banco:
+        st.markdown("**Extracto bancario** — Soporta Galicia, Santander, Mercado Pago (CSV o XLSX)")
+        f_bancos = st.file_uploader(
+            "Subir extracto(s) bancario(s)",
+            type=["csv", "xlsx", "xls"],
+            accept_multiple_files=True,
+            key="extractos",
+        )
+        if f_bancos:
+            for f in f_bancos:
+                df = _leer_archivo(f)
+                extractos.append(df)
+                st.success(f"{f.name}: {len(df)} filas cargadas")
 
-    with tab_s:
-        st.markdown("**Extracto Banco Santander** (CSV con Fecha Operacion, Concepto, Importe, Saldo)")
-        f_s = st.file_uploader("Subir extracto Santander", type=["csv"], key="santander")
-        if f_s:
-            extractos.append(pd.read_csv(f_s))
-            st.success(f"Santander: {f_s.name} cargado")
-
-    with tab_mp:
-        st.markdown("**Extracto Mercado Pago** (CSV con Monto Bruto, Comision MP, Monto Neto)")
-        f_mp = st.file_uploader("Subir extracto Mercado Pago", type=["csv"], key="mercadopago")
-        if f_mp:
-            extractos.append(pd.read_csv(f_mp))
-            st.success(f"Mercado Pago: {f_mp.name} cargado")
-
-    with tab_otro:
-        st.markdown("**Otro banco** - El sistema intentara detectar el formato automaticamente.")
-        f_otros = st.file_uploader("Subir extracto(s)", type=["csv"], accept_multiple_files=True, key="otros")
-        if f_otros:
-            for f in f_otros:
-                extractos.append(pd.read_csv(f))
-                st.success(f"{f.name} cargado")
-
+    ventas = pd.DataFrame()
     with tab_ctg:
-        st.markdown("**Datos de Contagram**")
-        uploaded_ventas = st.file_uploader("Ventas pendientes (CSV)", type=["csv"], key="ventas")
-        uploaded_compras = st.file_uploader("Compras pendientes (CSV)", type=["csv"], key="compras")
-        uploaded_param = st.file_uploader("Tabla parametrica (CSV)", type=["csv"], key="param")
+        st.markdown("**Ventas de Contagram** — Listado de ventas con Cliente, CUIT, Cobrado, Medio de Cobro")
+        uploaded_ventas = st.file_uploader("Subir ventas (CSV o XLSX)", type=["csv", "xlsx", "xls"], key="ventas")
+        if uploaded_ventas:
+            ventas = _leer_archivo(uploaded_ventas)
+            st.success(f"{uploaded_ventas.name}: {len(ventas)} ventas cargadas")
 
-    ventas = pd.read_csv(uploaded_ventas) if uploaded_ventas else pd.DataFrame()
-    compras = pd.read_csv(uploaded_compras) if uploaded_compras else pd.DataFrame()
-    tabla_param = pd.read_csv(uploaded_param) if uploaded_param else pd.DataFrame()
+            # Validar columnas requeridas
+            cols = [c.lower().strip() for c in ventas.columns]
+            cols_requeridas = {"cliente", "cobrado"}
+            cols_encontradas = {c for c in cols_requeridas if c in cols}
+            if cols_encontradas != cols_requeridas:
+                faltantes = cols_requeridas - cols_encontradas
+                st.warning(f"Columnas faltantes en ventas: {', '.join(faltantes)}. Se usara formato disponible.")
 
-    return extractos, ventas, compras, tabla_param
+    return extractos, ventas
 
 
 # --- Carga de datos ---
 if modo == "Demo (datos de prueba)":
     extractos, ventas, compras, tabla_param = load_demo_data()
     data_ready = len(extractos) > 0
+    modo_real = False
 else:
-    extractos, ventas, compras, tabla_param = load_manual_data()
-    data_ready = len(extractos) > 0 and not ventas.empty and not tabla_param.empty
+    extractos, ventas = load_manual_data()
+    compras = pd.DataFrame()
+    tabla_param = pd.DataFrame()
+    # Detectar si es datos reales (Contagram con Medio de Cobro) o test
+    cols_ventas = [c.lower().strip() for c in ventas.columns] if not ventas.empty else []
+    modo_real = "cobrado" in cols_ventas or "medio de cobro" in cols_ventas
+    data_ready = len(extractos) > 0 and not ventas.empty
 
 
 # --- Ejecucion ---
 if data_ready:
     if st.button("Ejecutar Conciliacion", type="primary", use_container_width=True):
         with st.spinner("Procesando conciliacion bancaria..."):
-            motor = MotorConciliacion(tabla_param)
-            resultado = motor.procesar(extractos, ventas, compras, match_config=match_config_override)
+            if modo_real:
+                motor = MotorConciliacion(pd.DataFrame())
+                resultado = motor.procesar_real(extractos, ventas, match_config=match_config_override)
+            else:
+                motor = MotorConciliacion(tabla_param)
+                resultado = motor.procesar(extractos, ventas, compras, match_config=match_config_override)
             st.session_state["resultado"] = resultado
             st.session_state["stats"] = motor.stats
+            st.session_state["modo_real"] = modo_real
 
     if "resultado" in st.session_state:
         resultado = st.session_state["resultado"]
@@ -588,22 +598,33 @@ if data_ready:
             st.markdown("### Cobranzas - Para importar en Contagram")
             df_cob = resultado["cobranzas_csv"]
             if not df_cob.empty:
+                # Filtros adaptativos segun modo
                 col1, col2 = st.columns(2)
                 with col1:
-                    niveles = [n for n in df_cob["Nivel Match"].unique() if pd.notna(n)]
-                    filtro_nivel = st.multiselect("Filtrar por nivel", niveles, default=niveles, key="f_cob")
+                    if "Status" in df_cob.columns:
+                        niveles = [n for n in df_cob["Status"].unique() if pd.notna(n)]
+                        filtro_nivel = st.multiselect("Filtrar por status", niveles, default=niveles, key="f_cob")
+                        df_f = df_cob[df_cob["Status"].isin(filtro_nivel)]
+                    elif "Nivel Match" in df_cob.columns:
+                        niveles = [n for n in df_cob["Nivel Match"].unique() if pd.notna(n)]
+                        filtro_nivel = st.multiselect("Filtrar por nivel", niveles, default=niveles, key="f_cob")
+                        df_f = df_cob[df_cob["Nivel Match"].isin(filtro_nivel)]
+                    else:
+                        df_f = df_cob
                 with col2:
-                    bancos = df_cob["Banco Origen"].unique().tolist()
-                    filtro_banco = st.multiselect("Filtrar por banco", bancos, default=bancos, key="fb_cob")
+                    banco_col = "Banco" if "Banco" in df_cob.columns else "Banco Origen"
+                    if banco_col in df_cob.columns:
+                        bancos = df_cob[banco_col].unique().tolist()
+                        filtro_banco = st.multiselect("Filtrar por banco", bancos, default=bancos, key="fb_cob")
+                        df_f = df_f[df_f[banco_col].isin(filtro_banco)]
 
-                df_f = df_cob[(df_cob["Nivel Match"].isin(filtro_nivel)) & (df_cob["Banco Origen"].isin(filtro_banco))]
                 st.dataframe(df_f, use_container_width=True, hide_index=True)
                 st.markdown(f"**Total: {len(df_f)} cobranzas | {format_money(df_f['Monto Cobrado'].sum())}**")
 
                 st.download_button(
-                    "Descargar subir_cobranzas_contagram.csv",
+                    "Descargar cobranzas_conciliadas.csv",
                     df_f.to_csv(index=False).encode("utf-8-sig"),
-                    "subir_cobranzas_contagram.csv", "text/csv",
+                    "cobranzas_conciliadas.csv", "text/csv",
                     use_container_width=True)
             else:
                 st.info("Sin cobranzas conciliadas.")
@@ -650,10 +671,18 @@ if data_ready:
         with tab5:
             st.markdown("### Detalle Completo")
             df_full = resultado["resultados"]
-            cols = ["fecha", "banco", "tipo", "clasificacion", "descripcion",
-                    "monto", "match_nivel", "tipo_match_monto", "facturas_count",
-                    "match_detalle", "confianza",
-                    "nombre_contagram", "factura_match", "diferencia_monto"]
+            if st.session_state.get("modo_real"):
+                cols = ["fecha", "banco", "tipo", "clasificacion", "descripcion",
+                        "monto", "cuit_banco", "nombre_banco_extraido",
+                        "conciliation_status", "conciliation_tag",
+                        "conciliation_confidence", "conciliation_reason",
+                        "nombre_contagram", "factura_match", "diferencia_monto",
+                        "tipo_match_monto", "facturas_count"]
+            else:
+                cols = ["fecha", "banco", "tipo", "clasificacion", "descripcion",
+                        "monto", "match_nivel", "tipo_match_monto", "facturas_count",
+                        "match_detalle", "confianza",
+                        "nombre_contagram", "factura_match", "diferencia_monto"]
             cols_ok = [c for c in cols if c in df_full.columns]
             st.dataframe(df_full[cols_ok], use_container_width=True, hide_index=True)
 
