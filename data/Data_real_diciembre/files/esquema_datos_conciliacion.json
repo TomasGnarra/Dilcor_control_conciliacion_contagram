@@ -1,0 +1,61 @@
+{
+  "transferencia_banco": {
+    "campos": {
+      "fecha": "datetime",
+      "sucursal": "string",
+      "numero_movimiento": "string",
+      "nombre_origen": "string",
+      "cuit_origen": "string(11)",
+      "monto": "float",
+      "descripcion_completa": "string"
+    },
+    "indices": [
+      "numero_movimiento",
+      "cuit_origen",
+      "monto",
+      "fecha"
+    ],
+    "validaciones": {
+      "monto": "debe ser positivo",
+      "cuit_origen": "11 dígitos numéricos",
+      "fecha": "rango diciembre 2024"
+    }
+  },
+  "venta_contagram": {
+    "campos": {
+      "id": "integer",
+      "fecha_emision": "datetime",
+      "cliente": "string",
+      "cuit": "string(11)",
+      "monto_cobrado": "float",
+      "medio_cobro": "string",
+      "es_pago_unico": "boolean",
+      "es_santander": "boolean",
+      "cuenta_medios": "integer"
+    },
+    "indices": [
+      "id",
+      "cuit",
+      "monto_cobrado",
+      "fecha_emision"
+    ],
+    "campos_calculados": {
+      "es_pago_unico": "not(' - ' in medio_cobro)",
+      "es_santander": "'Santander' in medio_cobro (case-insensitive)",
+      "cuenta_medios": "medio_cobro.count(' - ') + 1"
+    }
+  },
+  "conciliacion": {
+    "campos": {
+      "id_conciliacion": "string(uuid)",
+      "id_venta": "integer",
+      "numero_movimiento_banco": "string",
+      "nivel_confianza": "integer(0-100)",
+      "metodo_conciliacion": "enum[nivel_1, nivel_2, nivel_3]",
+      "fecha_conciliacion": "datetime",
+      "usuario": "string",
+      "notas": "string",
+      "estado": "enum[automatica, revision, confirmada, rechazada]"
+    }
+  }
+}
