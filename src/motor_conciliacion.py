@@ -193,6 +193,9 @@ class MotorConciliacion:
             "suggested_count": len(suggested),
             "suggested_monto": round(suggested["monto"].sum(), 2) if not suggested.empty else 0,
             "excluded_count": len(excluded),
+            # Desglose stats
+            "desglose_count": len(df[df.get("conciliation_tag", pd.Series(dtype=str)).str.startswith("PARCIAL_SANTANDER")]) if "conciliation_tag" in df.columns else 0,
+            "desglose_monto": round(df[df.get("conciliation_tag", pd.Series(dtype=str)).str.startswith("PARCIAL_SANTANDER")]["monto"].sum(), 2) if "conciliation_tag" in df.columns else 0,
         }
 
         for banco in df["banco"].unique():

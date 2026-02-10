@@ -49,6 +49,9 @@ def _analizar_medio_cobro(medio: str) -> dict:
         and len(medios_santander) == n
     )
 
+    medios_caja = [p for p in partes_norm if "caja grande" in p]
+    medios_otros = [p for p in partes_norm if "santander" not in p and "caja grande" not in p]
+
     return {
         "es_pago_unico": es_pago_unico,
         "es_pago_multiples_medios": es_pago_multiples,
@@ -57,6 +60,9 @@ def _analizar_medio_cobro(medio: str) -> dict:
         "contiene_caja_grande": contiene_caja_grande,
         "es_santander_puro": es_santander_puro,
         "medios_count": n,
+        "santander_parts_count": len(medios_santander),
+        "caja_grande_parts_count": len(medios_caja),
+        "otros_parts_count": len(medios_otros),
     }
 
 

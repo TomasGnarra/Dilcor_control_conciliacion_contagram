@@ -6,6 +6,11 @@ Niveles:
   - NIVEL 1 (MATCHED): CUIT ok + Santander puro + monto ok + fecha ok → automatica
   - NIVEL 2 (SUGGESTED): CUIT ok + multiples medios + monto ok → revision manual
   - NIVEL 3 (EXCLUDED): Caja GRANDE / sin CUIT / sin match
+
+Fase 2 - Desglose:
+  Ventas con medio mixto (Santander + Caja GRANDE) se desglosan:
+  buscar N movimientos Santander por CUIT, si su suma cubre la porcion
+  Santander → PARCIAL_SANTANDER_OK (Caja pendiente de verificar).
 """
 import pandas as pd
 from src.fuzzy_matcher import calcular_similitud
@@ -50,6 +55,10 @@ def conciliar_real(
     Concilia extracto bancario real contra ventas de Contagram.
     Usa CUIT como clave primaria, monto y fecha como validacion.
 
+    Fase 1: Matching individual (banco→venta) para ventas SIN Caja GRANDE.
+    Fase 2: Desglose matching para ventas mixtas (Santander + Caja GRANDE).
+            Agrupa movimientos bancarios por CUIT y matchea la porcion Santander.
+
     Args:
         extracto: Extracto bancario normalizado (con cuit_banco, nombre_banco_extraido)
         ventas: Ventas Contagram normalizadas (con cuit_limpio, flags de medio)
@@ -60,31 +69,38 @@ def conciliar_real(
     """
     cfg = {**REAL_CONFIG, **(config or {})}
 
-    # Solo conciliar ventas con estado "Cobrado" y que mencionen Santander
+    # Ventas con Santander (excluir vencidas)
     ventas_santander = ventas[
         (ventas["contiene_santander"] == True) &
         (ventas.get("estado", pd.Series(dtype=str)).str.lower() != "vencido")
     ].copy() if "contiene_santander" in ventas.columns else ventas.copy()
 
+    # Separar ventas PURAS (sin caja) vs MIXTAS (con caja)
+    ventas_puras = ventas_santander[
+        ventas_santander.get("contiene_caja_grande", pd.Series(dtype=bool)) != True
+    ].copy()
+
     # Track ventas ya usadas para evitar doble conciliacion
     ventas_usadas = set()
-    resultados = []
+    resultados = {}  # idx -> result dict
 
     # ─── Clasificar movimientos bancarios ────────────────────────────
     creditos = extracto[extracto["tipo"] == "CREDITO"].copy()
     debitos = extracto[extracto["tipo"] == "DEBITO"].copy()
 
-    # ─── PASO 1: Conciliar creditos (cobranzas) ─────────────────────
+    # ═══ FASE 1: Matching individual contra ventas SIN Caja GRANDE ═══
     for idx, mov in creditos.iterrows():
-        result = _conciliar_credito(mov, ventas_santander, ventas, ventas_usadas, cfg)
-        resultados.append(result)
+        result = _conciliar_credito(mov, ventas_puras, ventas, ventas_usadas, cfg)
+        resultados[idx] = result
 
-    # ─── PASO 2: Clasificar debitos ─────────────────────────────────
+    # ═══ FASE 2: Desglose matching para ventas mixtas ════════════════
+    _fase2_desglose(resultados, ventas_santander, ventas_usadas, cfg)
+
+    # ─── Clasificar debitos ──────────────────────────────────────────
     for idx, mov in debitos.iterrows():
-        result = _clasificar_debito(mov)
-        resultados.append(result)
+        resultados[idx] = _clasificar_debito(mov)
 
-    df = pd.DataFrame(resultados)
+    df = pd.DataFrame(list(resultados.values()))
 
     # Mapear a match_nivel para compatibilidad con dashboard existente
     status_to_nivel = {
@@ -96,6 +112,204 @@ def conciliar_real(
         df["match_nivel"] = df["conciliation_status"].map(status_to_nivel).fillna("no_match")
 
     return df
+
+
+def _fase2_desglose(
+    resultados: dict,
+    ventas_santander: pd.DataFrame,
+    ventas_usadas: set,
+    cfg: dict,
+):
+    """
+    Fase 2: Desglose matching para ventas con medio mixto (Santander + Caja GRANDE).
+
+    Logica:
+    - Para cada venta mixta con CUIT, buscar movimientos bancarios sin matchear del mismo CUIT.
+    - Si encontramos N movimientos bancarios (N = santander_parts_count esperado) cuya suma
+      es < Cobrado total, eso cubre la porcion Santander.
+    - Diferencia = Cobrado - suma_banco = porcion Caja GRANDE (pendiente de verificar).
+    - Tag: PARCIAL_SANTANDER_OK → SUGGESTED con confianza alta.
+    """
+    # Identificar ventas mixtas (Santander + Caja GRANDE) no usadas
+    ventas_mixtas = ventas_santander[
+        (ventas_santander.get("contiene_caja_grande", pd.Series(dtype=bool)) == True) &
+        (ventas_santander.get("contiene_santander", pd.Series(dtype=bool)) == True) &
+        (~ventas_santander.index.isin(ventas_usadas))
+    ]
+
+    if ventas_mixtas.empty:
+        return
+
+    # Identificar movimientos EXCLUDED o CUIT_OK_MONTO_DIFF (no matcheados)
+    movs_sin_match = {}
+    for idx, r in resultados.items():
+        if r.get("conciliation_status") == "EXCLUDED" and r.get("cuit_banco"):
+            cuit = r["cuit_banco"]
+            movs_sin_match.setdefault(cuit, []).append(idx)
+        elif (r.get("conciliation_status") == "SUGGESTED"
+              and r.get("conciliation_tag") == "CUIT_OK_MONTO_DIFF"
+              and r.get("cuit_banco")):
+            cuit = r["cuit_banco"]
+            movs_sin_match.setdefault(cuit, []).append(idx)
+
+    # Para cada venta mixta, intentar desglose
+    for vidx, venta in ventas_mixtas.iterrows():
+        cuit = venta.get("cuit_limpio", "")
+        if not cuit or cuit not in movs_sin_match:
+            continue
+
+        n_santander = venta.get("santander_parts_count", 0)
+        n_caja = venta.get("caja_grande_parts_count", 0)
+        cobrado_total = venta.get("Monto Total", 0)
+        nombre_cliente = venta.get("Nombre", "")
+        nro_factura = venta.get("Nro Factura", "")
+        medio = venta.get("medio_cobro", "")
+
+        if cobrado_total <= 0 or n_santander == 0:
+            continue
+
+        # Obtener movimientos bancarios disponibles para este CUIT
+        mov_indices = movs_sin_match.get(cuit, [])
+        movs_disponibles = [(idx, resultados[idx].get("monto", 0)) for idx in mov_indices]
+
+        if not movs_disponibles:
+            continue
+
+        # Buscar la mejor combinacion de exactamente N_santander movimientos
+        # cuya suma < cobrado_total (el resto es Caja GRANDE)
+        match_result = _buscar_desglose(
+            movs_disponibles, n_santander, cobrado_total,
+        )
+
+        if not match_result:
+            continue
+
+        montos_matched, suma_banco = match_result
+        porcion_caja = round(cobrado_total - suma_banco, 2)
+        n_movs = len(montos_matched)
+        match_count_ok = (n_movs == n_santander)
+
+        # Evaluar confianza
+        if match_count_ok and porcion_caja > 0:
+            confianza = 85
+            tag = "PARCIAL_SANTANDER_OK"
+            razon = (
+                f"Desglose: {n_movs} mov. Santander suman ${suma_banco:,.2f} "
+                f"de ${cobrado_total:,.2f} total. "
+                f"Porcion Caja GRANDE pendiente: ${porcion_caja:,.2f}. "
+                f"Cliente: {nombre_cliente}"
+            )
+        else:
+            confianza = 65
+            tag = "PARCIAL_SANTANDER_PROBABLE"
+            razon = (
+                f"Desglose parcial: {n_movs} mov. bancarios (esperados {n_santander}) "
+                f"suman ${suma_banco:,.2f} de ${cobrado_total:,.2f}. "
+                f"Porcion Caja GRANDE estimada: ${porcion_caja:,.2f}. "
+                f"Cliente: {nombre_cliente}"
+            )
+
+        # Actualizar los movimientos bancarios involucrados
+        for mov_idx, mov_monto in montos_matched:
+            resultados[mov_idx] = {
+                **resultados[mov_idx],
+                "conciliation_status": "SUGGESTED",
+                "conciliation_tag": tag,
+                "conciliation_confidence": "MEDIA",
+                "conciliation_reason": razon,
+                "nombre_contagram": nombre_cliente,
+                "id_contagram": venta.get("ID Cliente", ""),
+                "factura_match": nro_factura,
+                "diferencia_monto": porcion_caja,
+                "confianza": confianza,
+                "tipo_match_monto": "desglose",
+                "facturas_count": 1,
+                "desglose_info": {
+                    "suma_santander": suma_banco,
+                    "porcion_caja": porcion_caja,
+                    "n_movs_banco": n_movs,
+                    "n_santander_esperado": n_santander,
+                    "n_caja_esperado": n_caja,
+                    "medio_cobro": medio,
+                },
+            }
+
+        # Marcar venta como usada y quitar movimientos del pool
+        ventas_usadas.add(vidx)
+        for mov_idx, _ in montos_matched:
+            if cuit in movs_sin_match and mov_idx in movs_sin_match[cuit]:
+                movs_sin_match[cuit].remove(mov_idx)
+
+
+def _buscar_desglose(
+    movs_disponibles: list[tuple],
+    n_santander: int,
+    cobrado_total: float,
+) -> tuple | None:
+    """
+    Busca la mejor combinacion de movimientos bancarios para desglose.
+
+    Intenta encontrar exactamente n_santander movimientos cuya suma < cobrado_total.
+    Si no hay match exacto por count, prueba con menos movimientos.
+
+    Args:
+        movs_disponibles: lista de (idx, monto) de movimientos bancarios
+        n_santander: numero esperado de partes Santander en la venta
+        cobrado_total: monto total cobrado de la venta
+
+    Returns:
+        (matched_list, suma) o None
+    """
+    from itertools import combinations
+
+    n_santander = int(n_santander)
+    if n_santander <= 0 or not movs_disponibles:
+        return None
+
+    # Caso 1: intentar exactamente n_santander movimientos
+    if len(movs_disponibles) >= n_santander:
+        best = None
+        best_gap = float("inf")
+
+        if n_santander == len(movs_disponibles):
+            # Solo hay una combinacion posible
+            combo = movs_disponibles
+            suma = sum(m for _, m in combo)
+            if 0 < suma < cobrado_total:
+                return combo, suma
+        else:
+            for combo in combinations(movs_disponibles, n_santander):
+                suma = sum(m for _, m in combo)
+                if 0 < suma < cobrado_total:
+                    gap = cobrado_total - suma
+                    if gap < best_gap:
+                        best = (list(combo), suma)
+                        best_gap = gap
+
+        if best:
+            return best
+
+    # Caso 2: si n_santander > disponibles, usar todos los disponibles
+    if len(movs_disponibles) < n_santander:
+        suma = sum(m for _, m in movs_disponibles)
+        if 0 < suma < cobrado_total:
+            return movs_disponibles, suma
+
+    # Caso 3: probar con menos movimientos (1 a n_santander-1)
+    for size in range(min(n_santander - 1, len(movs_disponibles)), 0, -1):
+        best = None
+        best_gap = float("inf")
+        for combo in combinations(movs_disponibles, size):
+            suma = sum(m for _, m in combo)
+            if 0 < suma < cobrado_total:
+                gap = cobrado_total - suma
+                if gap < best_gap:
+                    best = (list(combo), suma)
+                    best_gap = gap
+        if best:
+            return best
+
+    return None
 
 
 def _conciliar_credito(
@@ -232,10 +446,9 @@ def _evaluar_match(
 
     diferencia = round(monto - monto_venta, 2)
 
-    # ─── NIVEL 1: MATCHED (alta certeza) ────────────────────────────
+    # ─── Caja GRANDE: no auto-conciliar, dejar para Fase 2 desglose ──
     if contiene_caja:
-        # Caja GRANDE → nunca auto-conciliar
-        ventas_usadas.add(vidx)
+        # NO marcar venta como usada — Fase 2 intentara desglose
         return {
             **base,
             "conciliation_status": "EXCLUDED",
@@ -243,7 +456,7 @@ def _evaluar_match(
             "conciliation_confidence": "BAJA",
             "conciliation_reason": (
                 f"Venta de {nombre_cliente} tiene Caja GRANDE en medio de cobro. "
-                f"No se puede determinar porcion Santander. Medio: {medio}"
+                f"Pendiente desglose Fase 2. Medio: {medio}"
             ),
             "nombre_contagram": nombre_cliente,
             "id_contagram": venta.get("ID Cliente", ""),
@@ -397,17 +610,14 @@ def _evaluar_sum_match(
     facturas = " + ".join(str(v["venta"].get("Nro Factura", "")) for v in ventas_list)
     count = len(ventas_list)
 
-    # Marcar todas como usadas
-    for v in ventas_list:
-        ventas_usadas.add(v["idx"])
-
     if alguna_caja:
+        # NO marcar ventas como usadas — Fase 2 intentara desglose
         return {
             **base,
             "conciliation_status": "EXCLUDED",
             "conciliation_tag": "SUM_MIXTO_CAJA",
             "conciliation_confidence": "BAJA",
-            "conciliation_reason": f"Suma de {count} ventas matchea pero alguna incluye Caja GRANDE",
+            "conciliation_reason": f"Suma de {count} ventas matchea pero alguna incluye Caja GRANDE. Pendiente desglose Fase 2.",
             "nombre_contagram": nombre_cliente,
             "id_contagram": primera.get("ID Cliente", ""),
             "factura_match": facturas,
@@ -416,6 +626,10 @@ def _evaluar_sum_match(
             "tipo_match_monto": sum_result["tipo"],
             "facturas_count": count,
         }
+
+    # Marcar ventas como usadas (solo si no es caja mixta)
+    for v in ventas_list:
+        ventas_usadas.add(v["idx"])
 
     if todas_santander_puro:
         return {
