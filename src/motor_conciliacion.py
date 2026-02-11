@@ -83,7 +83,8 @@ class MotorConciliacion:
         ventas_norm = normalizar_ventas_contagram(ventas_contagram)
 
         # 3. Conciliar con motor real (CUIT-based, 3 niveles)
-        self.resultados = conciliar_real(extracto_unificado, ventas_norm, match_config)
+        self.resultados, self._ventas_usadas = conciliar_real(extracto_unificado, ventas_norm, match_config)
+        self._ventas_norm = ventas_norm
 
         # 4. Stats
         self._calcular_stats_real(ventas_norm)
@@ -94,6 +95,7 @@ class MotorConciliacion:
             "cobranzas_csv": self._generar_cobranzas_csv_real(),
             "pagos_csv": pd.DataFrame(),
             "excepciones": self._generar_excepciones_real(),
+            "detalle_facturas": self._generar_detalle_facturas(),
         }
 
     def _calcular_stats_real(self, ventas: pd.DataFrame):
@@ -211,11 +213,10 @@ class MotorConciliacion:
             }
 
     def _generar_cobranzas_csv_real(self) -> pd.DataFrame:
-        """Genera CSV de cobranzas para datos reales."""
+        """Genera CSV de cobranzas para datos reales (incluye todos los estados)."""
         df = self.resultados
         cobranzas = df[
-            (df.get("clasificacion", pd.Series(dtype=str)) == "cobranza") &
-            (df.get("conciliation_status", pd.Series(dtype=str)).isin(["MATCHED", "SUGGESTED"]))
+            (df.get("clasificacion", pd.Series(dtype=str)) == "cobranza")
         ].copy()
 
         if cobranzas.empty:
@@ -236,10 +237,12 @@ class MotorConciliacion:
             "Diferencia $": cobranzas.get("diferencia_monto", 0),
             "Banco": cobranzas["banco"],
             "Referencia": cobranzas["referencia"],
+            "Descripcion": cobranzas["descripcion"],
+            "Nombre Banco Extraido": cobranzas.get("nombre_banco_extraido", ""),
         })
 
     def _generar_excepciones_real(self) -> pd.DataFrame:
-        """Genera excepciones para datos reales."""
+        """Genera excepciones para datos reales con campos extendidos para analisis."""
         df = self.resultados
         exc = df[
             (df.get("conciliation_status", pd.Series(dtype=str)) == "EXCLUDED") &
@@ -251,13 +254,55 @@ class MotorConciliacion:
 
         return pd.DataFrame({
             "Fecha": exc["fecha"].dt.strftime("%d/%m/%Y") if hasattr(exc["fecha"], "dt") else exc["fecha"],
+            "Banco": exc["banco"],
             "Tipo": exc["tipo"],
+            "Clasificacion": exc.get("clasificacion", ""),
             "Descripcion": exc["descripcion"],
             "Monto": exc["monto"],
             "CUIT Banco": exc.get("cuit_banco", ""),
+            "Cliente/Nombre Extraido": exc.get("nombre_banco_extraido", ""),
+            "Cliente Contagram": exc.get("nombre_contagram", ""),
             "Tag": exc.get("conciliation_tag", ""),
             "Razon": exc.get("conciliation_reason", ""),
+            "Confianza": exc.get("conciliation_confidence", 0),
+            "Tipo Match": exc.get("tipo_match_monto", "").fillna("—") if "tipo_match_monto" in exc.columns else "—",
+            "Factura": exc.get("factura_match", ""),
+            "Diferencia $": exc.get("diferencia_monto", 0),
+            "Cant Facturas": exc.get("facturas_count", 0),
             "Referencia": exc["referencia"],
+        })
+
+    def _generar_detalle_facturas(self) -> pd.DataFrame:
+        """Genera DataFrame de TODAS las facturas de Contagram con su estado de conciliacion."""
+        if not hasattr(self, '_ventas_norm') or not hasattr(self, '_ventas_usadas'):
+            return pd.DataFrame()
+
+        ventas = self._ventas_norm
+        usadas = self._ventas_usadas
+
+        if ventas.empty:
+            return pd.DataFrame()
+
+        # Determinar estado
+        ventas["estado_conciliacion"] = ventas.index.isin(usadas)
+        ventas["estado_conciliacion"] = ventas["estado_conciliacion"].map({True: "Conciliada", False: "Sin Match"})
+
+        return pd.DataFrame({
+            "Estado Conciliacion": ventas["estado_conciliacion"],
+            "ID": ventas.get("ID Cliente", ""),
+            "Fecha Emision": ventas["fecha_emision"].dt.strftime("%d/%m/%Y") if hasattr(ventas["fecha_emision"], "dt") else ventas["fecha_emision"],
+            "Cliente": ventas.get("Nombre", ""),
+            "CUIT": ventas.get("CUIT", ""),
+            "Nro Factura": ventas.get("Nro Factura", ""),
+            "Tipo": ventas.get("tipo_comprobante", ""),
+            "Total Venta": ventas.get("total_venta", 0),
+            "Cobrado": ventas.get("Monto Total", 0),
+            "Diferencia Venta-Cobro": round(ventas.get("total_venta", 0) - ventas.get("Monto Total", 0), 2),
+            "Estado": ventas.get("estado", ""),
+            "Medio de Cobro": ventas.get("medio_cobro", ""),
+            "Contiene Santander": ventas.get("contiene_santander", False),
+            "Contiene Caja Grande": ventas.get("contiene_caja_grande", False),
+            "CUIT Limpio": ventas.get("cuit_limpio", ""),
         })
 
     def _calcular_stats(self, ventas: pd.DataFrame, compras: pd.DataFrame):

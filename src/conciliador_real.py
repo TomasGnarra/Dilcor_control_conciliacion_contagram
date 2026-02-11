@@ -65,7 +65,7 @@ def conciliar_real(
         config: Override de REAL_CONFIG
 
     Returns:
-        DataFrame con resultados de conciliacion
+        Tuple of (DataFrame con resultados de conciliacion, set de indices de ventas usadas)
     """
     cfg = {**REAL_CONFIG, **(config or {})}
 
@@ -111,7 +111,7 @@ def conciliar_real(
     if "conciliation_status" in df.columns:
         df["match_nivel"] = df["conciliation_status"].map(status_to_nivel).fillna("no_match")
 
-    return df
+    return df, ventas_usadas
 
 
 def _fase2_desglose(
