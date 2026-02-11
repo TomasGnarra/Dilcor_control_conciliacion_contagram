@@ -124,14 +124,39 @@ st.markdown("""
     section[data-testid="stSidebar"] hr {
         border-color: #333 !important;
     }
-    section[data-testid="stSidebar"] .stSlider [data-baseweb="slider"] div {
+    section[data-testid="stSidebar"] .stSlider [role="slider"] {
         background: #E30613 !important;
+        border: 2px solid #FFFFFF !important;
+    }
+    section[data-testid="stSidebar"] .stSlider [data-baseweb="slider"] > div:first-child {
+        background: #3A3A3A !important;
     }
 
     /* Expander headers */
     div[data-testid="stExpander"] details summary p {
         font-weight: 600; font-size: 1.05rem;
     }
+
+    /* Umbrales de matching */
+    .threshold-panel {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid #3A3A3A;
+        border-radius: 12px;
+        padding: 0.9rem 0.9rem 0.5rem 0.9rem;
+        margin-bottom: 0.6rem;
+    }
+    .threshold-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #FFF;
+        margin-bottom: 0.15rem;
+    }
+    .threshold-help {
+        font-size: 0.75rem;
+        color: #BFBFBF;
+        margin-bottom: 0.45rem;
+    }
+
 
     /* Download buttons */
     .stDownloadButton button {
@@ -181,29 +206,77 @@ with st.sidebar:
     # --- Umbrales configurables ---
     st.markdown("---")
     with st.expander("Ajustar umbrales de matching"):
-        tol_exacto = st.slider(
-            "Tolerancia monto exacto (%)",
-            0.0, 2.0, 0.5, 0.1,
-            help="Diferencia maxima de monto para match exacto"
-        ) / 100
-        tol_probable_pct = st.slider(
-            "Tolerancia monto probable (%)",
-            0.0, 5.0, 1.0, 0.1,
-            help="Diferencia maxima de monto para match probable"
-        ) / 100
-        tol_probable_abs = st.number_input(
-            "Tolerancia monto probable ($ ARS)",
-            0, 10000, 500, 50,
-            help="Diferencia absoluta maxima en pesos para match probable"
+        niveles_umbral = {
+            1: {
+                "etiqueta": "Muy estricto",
+                "tol_exacto_pct": 0.2,
+                "tol_probable_pct": 0.5,
+                "tol_probable_abs": 250,
+                "umbral_id_exacto_pct": 92,
+                "umbral_id_probable_pct": 70,
+                "descripcion": "Maxima exactitud: menos falsos positivos, pero mas casos pendientes.",
+            },
+            2: {
+                "etiqueta": "Estricto",
+                "tol_exacto_pct": 0.3,
+                "tol_probable_pct": 0.8,
+                "tol_probable_abs": 300,
+                "umbral_id_exacto_pct": 88,
+                "umbral_id_probable_pct": 65,
+                "descripcion": "Conservador: exige bastante similitud y tolera poca diferencia de monto.",
+            },
+            3: {
+                "etiqueta": "Balanceado (recomendado)",
+                "tol_exacto_pct": 0.5,
+                "tol_probable_pct": 1.0,
+                "tol_probable_abs": 500,
+                "umbral_id_exacto_pct": 80,
+                "umbral_id_probable_pct": 55,
+                "descripcion": "Equilibrio entre precision y cobertura para operacion diaria.",
+            },
+            4: {
+                "etiqueta": "Flexible",
+                "tol_exacto_pct": 0.8,
+                "tol_probable_pct": 1.5,
+                "tol_probable_abs": 800,
+                "umbral_id_exacto_pct": 77,
+                "umbral_id_probable_pct": 50,
+                "descripcion": "Acepta mas variaciones: reduce pendientes, pero requiere revision.",
+            },
+            5: {
+                "etiqueta": "Muy flexible",
+                "tol_exacto_pct": 1.0,
+                "tol_probable_pct": 2.0,
+                "tol_probable_abs": 1000,
+                "umbral_id_exacto_pct": 75,
+                "umbral_id_probable_pct": 45,
+                "descripcion": "Maxima cobertura: mas coincidencias con mayor control manual.",
+            },
+        }
+
+        nivel_umbral = st.slider(
+            "Filtro deslizante de umbral",
+            min_value=1,
+            max_value=5,
+            value=3,
+            step=1,
+            help="Izquierda: mas estricto. Derecha: mas flexible.",
         )
-        umbral_id_exacto = st.slider(
-            "Umbral similitud ID exacto",
-            0.5, 1.0, 0.80, 0.05,
-        )
-        umbral_id_probable = st.slider(
-            "Umbral similitud ID probable",
-            0.3, 0.8, 0.55, 0.05,
-        )
+        cfg_umbral = niveles_umbral[nivel_umbral]
+
+        st.caption("1 = Muy estricto · 3 = Balanceado · 5 = Muy flexible")
+
+        st.markdown('<div class="threshold-panel">', unsafe_allow_html=True)
+        st.markdown(f'<div class="threshold-title">Nivel actual: {cfg_umbral["etiqueta"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="threshold-help">{cfg_umbral["descripcion"]}</div>', unsafe_allow_html=True)
+        st.caption("Si lo moves a la izquierda: menos matches y mas precision. A la derecha: mas matches y mas revision manual.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        tol_exacto = cfg_umbral["tol_exacto_pct"] / 100
+        tol_probable_pct = cfg_umbral["tol_probable_pct"] / 100
+        tol_probable_abs = cfg_umbral["tol_probable_abs"]
+        umbral_id_exacto = cfg_umbral["umbral_id_exacto_pct"] / 100
+        umbral_id_probable = cfg_umbral["umbral_id_probable_pct"] / 100
 
     match_config_override = {
         "tolerancia_monto_exacto_pct": tol_exacto,
