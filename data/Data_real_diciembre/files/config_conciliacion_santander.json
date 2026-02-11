@@ -1,0 +1,106 @@
+{
+  "banco_santander": {
+    "estructura_archivo": {
+      "columnas": [
+        "Fecha",
+        "Sucursal",
+        "Codigo_Transaccion",
+        "Numero_Movimiento",
+        "Descripcion",
+        "Monto"
+      ],
+      "fecha_formato": "serial_excel",
+      "fecha_base": "1899-12-30"
+    },
+    "filtros_transferencias": {
+      "codigo_transaccion": 4805,
+      "monto_tipo": "positivo"
+    },
+    "parsing_descripcion": {
+      "regex_nombre_cuit": "De\\s+([^/]+?)\\s*/.*?(\\d{11})",
+      "regex_nombre_solo": "De\\s+([^/]+)",
+      "grupos": {
+        "nombre": 1,
+        "cuit": 2
+      }
+    }
+  },
+  "contagram": {
+    "estructura_archivo": {
+      "columnas": [
+        "Id",
+        "Emisión",
+        "Cliente",
+        "CUIT",
+        "Tipo",
+        "N° de Factura",
+        "Vendedor",
+        "Total Venta",
+        "Cobrado",
+        "Estado",
+        "Medio de Cobro",
+        "Nota Cliente"
+      ]
+    },
+    "filtros_santander": {
+      "medio_cobro_keywords": [
+        "Santander Río PRINCA",
+        "viajar siempre SANTANDER",
+        "Santader Rio FREITES"
+      ]
+    },
+    "limpieza_cuit": {
+      "remover_caracteres": [
+        "-",
+        " "
+      ],
+      "longitud_esperada": 11,
+      "validar_numerico": true
+    }
+  },
+  "conciliacion": {
+    "nivel_1_alta_certeza": {
+      "descripcion": "Pagos únicos de Santander con coincidencia exacta",
+      "criterios": {
+        "pago_unico": true,
+        "coincidencia_cuit": true,
+        "tolerancia_monto": 0.01,
+        "ventana_dias": 7
+      },
+      "confianza": 95
+    },
+    "nivel_2_probable": {
+      "descripcion": "Pagos con fuzzy matching de nombres",
+      "criterios": {
+        "pago_unico": true,
+        "fuzzy_matching_nombre": true,
+        "umbral_similitud": 85,
+        "coincidencia_monto": true,
+        "ventana_dias": 15
+      },
+      "confianza": 75
+    },
+    "nivel_3_revision": {
+      "descripcion": "Requiere revisión manual",
+      "criterios": {
+        "pagos_multiples": true
+      },
+      "confianza": 0
+    }
+  },
+  "reglas_negocio": {
+    "notas": [
+      "El campo 'Medio de Cobro' en Contagram NO desglosa montos por medio de pago",
+      "Las ventas con múltiples medios requieren datos adicionales para conciliación",
+      "Las fechas pueden diferir hasta 20 días entre emisión y cobro efectivo",
+      "100% de transferencias Santander incluyen CUIT",
+      "73.4% de ventas Contagram incluyen CUIT"
+    ],
+    "preguntas_cliente": [
+      "¿Existe reporte con desglose de pagos parciales?",
+      "¿Qué significa 'Santander - Santander' repetido?",
+      "¿Cuál es la ventana temporal normal entre emisión y cobro?",
+      "¿Cómo registran los pagos parciales internamente?"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "banco_santander": {
+    "total_movimientos": 625,
+    "transferencias_recibidas": 204,
+    "monto_total_transferencias": 89416694.78,
+    "cobertura_cuit": "100%",
+    "periodo": "Diciembre 2024"
+  },
+  "contagram": {
+    "total_ventas": 1730,
+    "ventas_con_santander": 365,
+    "monto_total_santander": 181563991.43,
+    "ventas_pago_unico": 284,
+    "monto_pago_unico": 99331688.72,
+    "ventas_pagos_multiples": 81,
+    "cobertura_cuit": "73.4%",
+    "periodo": "Diciembre 2024"
+  },
+  "analisis": {
+    "diferencia_montos": 92147296.65,
+    "porcentaje_diferencia": "102%",
+    "coincidencias_exactas_monto": 17,
+    "casos_conciliables_nivel_1": "~180-200 (estimado)",
+    "casos_requieren_revision": "~165-185 (estimado)"
+  },
+  "problema_principal": "Campo 'Medio de Cobro' no desglosa montos cuando hay pagos múltiples",
+  "solucion_recomendada": "Implementar conciliación progresiva por niveles de certeza"
+}
