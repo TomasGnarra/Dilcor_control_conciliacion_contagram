@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 import os
 import io
+import json
 from src.motor_conciliacion import MotorConciliacion
 from src.matcher import MATCH_CONFIG
 from src.ui.styles import load_css, render_header
@@ -170,7 +171,19 @@ def load_manual_data():
     tab_banco, tab_ctg = st.tabs(["Extracto Bancario", "Ventas Contagram"])
 
     extractos = []
+    medios_pago_seleccionados = []
+
     with tab_banco:
+        # --- Selector explicito de banco ---
+        banco_opciones = ["Autodetectar", "Banco Galicia", "Banco Santander", "Mercado Pago"]
+        banco_seleccionado = st.selectbox(
+            "Seleccionar banco del extracto",
+            banco_opciones,
+            index=0,
+            help="Elegi el banco correspondiente al extracto. Si no estas seguro, deja 'Autodetectar'.",
+        )
+        st.session_state["banco_seleccionado"] = banco_seleccionado
+
         st.markdown("**Extracto bancario** — Soporta Galicia, Santander, Mercado Pago (CSV o XLSX)")
         f_bancos = st.file_uploader(
             "Subir extracto(s) bancario(s)",
@@ -200,7 +213,138 @@ def load_manual_data():
                 faltantes = cols_requeridas - cols_encontradas
                 st.warning(f"Columnas faltantes en ventas: {', '.join(faltantes)}. Se usara formato disponible.")
 
-    return extractos, ventas
+            # --- Filtro inteligente de medios de pago ---
+            col_medio = _detectar_columna_medio(ventas)
+
+            if col_medio is not None:
+                medios_unicos = sorted([
+                    str(m) for m in ventas[col_medio].dropna().unique()
+                    if str(m).strip()
+                ])
+
+                if medios_unicos:
+                    # Cargar mapeo banco -> medio de pago
+                    mapeo = _cargar_mapeo_banco_medio()
+                    banco_sel = st.session_state.get("banco_seleccionado", "Autodetectar")
+
+                    # Auto-seleccionar medios que correspondan al banco elegido
+                    default_medios = []
+                    if banco_sel != "Autodetectar" and banco_sel in mapeo:
+                        patrones = mapeo[banco_sel]
+                        for medio in medios_unicos:
+                            medio_lower = medio.lower()
+                            if any(patron.lower() in medio_lower for patron in patrones):
+                                default_medios.append(medio)
+
+                    st.markdown("---")
+                    st.markdown("##### Filtrar por Medio de Pago")
+                    if banco_sel != "Autodetectar":
+                        st.caption(f"Banco seleccionado: **{banco_sel}** — se pre-seleccionan medios de pago relacionados")
+                    else:
+                        st.caption("Selecciona los medios de pago para filtrar las ventas a conciliar")
+
+                    medios_pago_seleccionados = st.multiselect(
+                        "Medios de pago a conciliar",
+                        medios_unicos,
+                        default=default_medios,
+                        help="Solo las ventas con estos medios de pago se cruzaran contra el extracto bancario.",
+                    )
+                    st.session_state["medios_pago_seleccionados"] = medios_pago_seleccionados
+
+                    # --- Toggle exacto vs contiene ---
+                    filtro_contiene = st.toggle(
+                        "Incluir medios que **contengan** los seleccionados",
+                        value=True,
+                        help="Activado: filtra ventas cuyo medio de pago CONTENGA alguno de los seleccionados (ej: 'Santander Rio PRINCA aa - Caja GRANDE' matchea con 'Santander'). Desactivado: solo match exacto.",
+                    )
+                    st.session_state["filtro_medio_contiene"] = filtro_contiene
+
+                    # --- Preview post-filtro ---
+                    if medios_pago_seleccionados:
+                        _render_preview_filtro(ventas, col_medio, medios_pago_seleccionados, medios_unicos, filtro_contiene)
+
+    return extractos, ventas, medios_pago_seleccionados
+
+
+def _detectar_columna_medio(df):
+    """Detecta la columna de medio de pago en el DataFrame."""
+    for candidato in ["Medio de Cobro", "Medio de Pago", "Forma de Pago"]:
+        if candidato in df.columns:
+            return candidato
+    for c in df.columns:
+        if c.lower().strip() in ["medio de cobro", "medio de pago", "forma de pago"]:
+            return c
+    return None
+
+
+def _cargar_mapeo_banco_medio():
+    """Carga el mapeo banco->medio de pago desde archivo JSON."""
+    base = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(base, "data", "config", "mapeo_banco_medio_pago.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _crear_mask_filtro(df, col_medio, seleccionados, filtro_contiene=False):
+    """Crea mascara de filtro: exacto o contiene."""
+    if filtro_contiene:
+        mask = df[col_medio].fillna("").apply(
+            lambda x: any(sel.lower() in str(x).lower() for sel in seleccionados)
+        )
+    else:
+        mask = df[col_medio].isin(seleccionados)
+    return mask
+
+
+def _render_preview_filtro(ventas, col_medio, seleccionados, todos_medios, filtro_contiene=False):
+    """Muestra resumen de ventas filtradas vs totales con branding Dilcor."""
+    mask = _crear_mask_filtro(ventas, col_medio, seleccionados, filtro_contiene)
+    df_filtrado = ventas[mask]
+
+    # Detectar columna de monto
+    col_monto = None
+    for candidato in ["Cobrado", "Monto Total", "Total"]:
+        if candidato in ventas.columns:
+            col_monto = candidato
+            break
+
+    total_filas = len(ventas)
+    filtrado_filas = len(df_filtrado)
+
+    total_monto = ventas[col_monto].sum() if col_monto else 0
+    filtrado_monto = df_filtrado[col_monto].sum() if col_monto else 0
+
+    medios_excluidos = sorted(set(todos_medios) - set(seleccionados))
+    excluidos_txt = ", ".join(medios_excluidos) if medios_excluidos else "Ninguno"
+    seleccionados_txt = ", ".join(seleccionados)
+
+    st.markdown(
+        f'<div style="'
+        f'background: linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);'
+        f'border-left: 4px solid #E30613;'
+        f'border-radius: 8px;'
+        f'padding: 1.2rem 1.5rem;'
+        f'margin: 1rem 0;'
+        f'color: #FFFFFF;'
+        f'">'
+        f'<div style="font-size: 0.85rem; color: #E30613; font-weight: 700; '
+        f'text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.8rem;">'
+        f'Preview de Filtrado</div>'
+        f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.9rem;">'
+        f'<div>Total en archivo: <b>{total_filas}</b> ventas</div>'
+        f'<div>Monto total: <b>${total_monto:,.0f}</b></div>'
+        f'<div style="color: #4CAF50;">A conciliar: <b>{filtrado_filas}</b> ventas</div>'
+        f'<div style="color: #4CAF50;">Monto filtrado: <b>${filtrado_monto:,.0f}</b></div>'
+        f'</div>'
+        f'<div style="margin-top: 0.8rem; font-size: 0.8rem; color: #AAA;">'
+        f'Medios seleccionados: {seleccionados_txt}<br>'
+        f'Medios excluidos: {excluidos_txt}'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
 
 
 # --- Carga de datos ---
@@ -209,7 +353,7 @@ if modo == "Demo (datos de prueba)":
     data_ready = len(extractos) > 0
     modo_real = False
 else:
-    extractos, ventas = load_manual_data()
+    extractos, ventas, medios_pago_sel = load_manual_data()
     compras = pd.DataFrame()
     tabla_param = pd.DataFrame()
     # Detectar si es datos reales (Contagram con Medio de Cobro) o test
@@ -224,7 +368,12 @@ if data_ready:
         with st.spinner("Procesando conciliacion bancaria..."):
             if modo_real:
                 motor = MotorConciliacion(pd.DataFrame())
-                resultado = motor.procesar_real(extractos, ventas, match_config=match_config_override)
+                resultado = motor.procesar_real(
+                    extractos, ventas,
+                    match_config=match_config_override,
+                    medios_pago_filtro=medios_pago_sel if modo == "Manual (subir archivos)" else None,
+                    filtro_medio_contiene=st.session_state.get("filtro_medio_contiene", False) if modo == "Manual (subir archivos)" else False,
+                )
             else:
                 motor = MotorConciliacion(tabla_param)
                 resultado = motor.procesar(extractos, ventas, compras, match_config=match_config_override)
@@ -365,9 +514,12 @@ if data_ready:
                 pct_conciliacion = (conciliado / total_cobrado * 100) if total_cobrado > 0 else 0
 
                 c1, c2, c3 = st.columns(3)
-                kpi_card("Total Facturado", format_money(total_facturado), "Ventas brutas Contagram", "neutral", c1)
+                n_total = len(df_det)
+                n_sin_match = len(df_det[df_det["Estado Conciliacion"] == "Sin Match"])
+                
+                kpi_card("Total Facturado", format_money(total_facturado), f"{n_total} ventas procesadas", "neutral", c1)
                 kpi_card("Total Cobrado", format_money(total_cobrado), f"Pendiente: {format_money(pendiente)}", "neutral", c2)
-                kpi_card("% Conciliación Bancaria", f"{pct_conciliacion:.1f}%", f"Sin Match: {format_money(sin_match)}", "alert" if pct_conciliacion < 90 else "success", c3)
+                kpi_card("% Conciliación Bancaria", f"{pct_conciliacion:.1f}%", f"Sin Match: {format_money(sin_match)} ({n_sin_match} ventas)", "alert" if pct_conciliacion < 90 else "success", c3)
 
                 # Grafico por Medio de Cobro
                 st.markdown("##### 📊 Cobros por Medio de Pago")

@@ -193,7 +193,27 @@ La combinacion ponderada de los 3 algoritmos da un score robusto que funciona bi
 | **Banco Santander** | Fecha Operacion, Concepto, Importe (+/-), Saldo | Automatica por columnas |
 | **Mercado Pago** | Fecha, Descripcion, Monto Bruto, Comision MP, IVA, Monto Neto | Automatica por columnas |
 
-El sistema detecta automaticamente de que banco es cada archivo por los nombres de las columnas. No hace falta indicarlo manualmente.
+El sistema detecta automaticamente de que banco es cada archivo por los nombres de las columnas. Opcionalmente, al subir un extracto en modo Manual, se puede elegir el banco explicitamente con un selector.
+
+### Filtro por Medio de Pago (Modo Manual)
+
+Cuando se suben ventas de Contagram en modo Manual, el sistema detecta la columna "Medio de Cobro" y muestra un `multiselect` con todos los medios de pago encontrados en el archivo.
+
+Si se eligio un banco en el paso anterior, el sistema **pre-selecciona automaticamente** los medios de pago relevantes usando el mapeo definido en `data/config/mapeo_banco_medio_pago.json`:
+
+```json
+{
+  "Banco Santander": ["Santander Río PRINCA", "Santander"],
+  "Banco Galicia": ["Galicia", "Banco Galicia"],
+  "Mercado Pago": ["Mercado Pago PEREYRA", "MercadoPago", "MERPAG"]
+}
+```
+
+El matching es **parcial y case-insensitive**: si el medio de cobro del archivo *contiene* algun valor del mapeo, se pre-selecciona. El usuario puede ajustar la seleccion manualmente antes de ejecutar la conciliacion.
+
+**Si no se selecciona ningun medio de pago**, la conciliacion se ejecuta contra todas las ventas (comportamiento original).
+
+El archivo JSON es editable sin tocar codigo. Para agregar un nuevo banco o medio de pago, simplemente editarlo y reiniciar la app.
 
 ---
 

@@ -7,6 +7,7 @@ Motor de Conciliacion - Orquesta el proceso completo:
 5. KPIs de impacto financiero (Money Gap)
 """
 import pandas as pd
+import logging
 from datetime import datetime
 
 from src.normalizador import normalizar, detectar_banco
@@ -67,8 +68,12 @@ class MotorConciliacion:
         extractos_bancarios: list[pd.DataFrame],
         ventas_contagram: pd.DataFrame,
         match_config: dict = None,
+        medios_pago_filtro: list[str] = None,
+        filtro_medio_contiene: bool = False,
     ) -> dict:
         """Procesa datos reales: usa CUIT + flags de medio de cobro."""
+        logger = logging.getLogger(__name__)
+
         # 1. Normalizar extracto bancario
         extractos_normalizados = []
         for df in extractos_bancarios:
@@ -81,6 +86,25 @@ class MotorConciliacion:
 
         # 2. Normalizar ventas Contagram (agrega flags de medio de cobro)
         ventas_norm = normalizar_ventas_contagram(ventas_contagram)
+        self._ventas_norm_todas = ventas_norm  # Guardar todas antes de filtrar
+
+        # 2b. Filtrar ventas por medio de pago (si se especifica filtro)
+        self._ventas_excluidas = pd.DataFrame()
+        if medios_pago_filtro and len(medios_pago_filtro) > 0:
+            total_antes = len(ventas_norm)
+            if filtro_medio_contiene:
+                mask = ventas_norm["medio_cobro"].fillna("").apply(
+                    lambda x: any(sel.lower() in str(x).lower() for sel in medios_pago_filtro)
+                )
+            else:
+                mask = ventas_norm["medio_cobro"].isin(medios_pago_filtro)
+            self._ventas_excluidas = ventas_norm[~mask].copy()
+            ventas_norm = ventas_norm[mask].copy()
+            modo_txt = "contiene" if filtro_medio_contiene else "exacto"
+            logger.info(
+                "Ventas filtradas: %d de %d filas (modo: %s, medios de pago: %s)",
+                len(ventas_norm), total_antes, modo_txt, medios_pago_filtro,
+            )
 
         # 3. Conciliar con motor real (CUIT-based, 3 niveles)
         self.resultados, self._ventas_usadas = conciliar_real(extracto_unificado, ventas_norm, match_config)
@@ -160,9 +184,8 @@ class MotorConciliacion:
             "de_mas": 0, "de_menos": 0, "diferencia_neta": 0,
         }
 
-        # Monto ventas contagram (solo Santander cobrado)
-        ventas_santander = ventas[ventas.get("contiene_santander", pd.Series(dtype=bool)) == True]
-        monto_ventas = round(ventas_santander["Monto Total"].sum(), 2) if not ventas_santander.empty else 0
+        # Monto ventas contagram (ventas ya filtradas por medio de pago)
+        monto_ventas = round(ventas["Monto Total"].sum(), 2) if not ventas.empty else 0
 
         self.stats = {
             "total_movimientos": total,
