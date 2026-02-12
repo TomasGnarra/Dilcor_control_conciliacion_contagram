@@ -7,6 +7,8 @@ Requiere GOOGLE_API_KEY en secrets o variable de entorno.
 import json
 import urllib.request
 import urllib.error
+import time
+import random
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
@@ -117,9 +119,12 @@ def chat_responder(api_key: str, stats: dict, historial: list, pregunta: str) ->
     """
     system_prompt = _build_system_prompt(stats)
 
+    # Limitar historial a los ultimos 5 mensajes para ahorrar tokens y evitar 429
+    historial_reciente = historial[-5:] if len(historial) > 5 else historial
+
     # Construir contenido del chat
     contents = []
-    for msg in historial:
+    for msg in historial_reciente:
         contents.append({
             "role": msg["role"],
             "parts": [{"text": msg["parts"][0]["text"]}]
@@ -152,15 +157,35 @@ def chat_responder(api_key: str, stats: dict, historial: list, pregunta: str) ->
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Gemini API error {e.code}: {body}") from e
-
+    # Retry logic con exponential backoff agresivo
+    # 2^0 * 2 = 2s
+    # 2^1 * 2 = 4s
+    # 2^2 * 2 = 8s
+    # 2^3 * 2 = 16s
+    # 2^4 * 2 = 32s
+    # Total wait: ~62s (suficiente para cubrir los 30s que pide la API)
+    max_retries = 5
+    base_delay = 2
+    
+    for attempt in range(max_retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+                break # Exito, salir del loop
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < max_retries:
+                # Calcular delay con jitter: (base_delay * 2^attempt) + random
+                delay = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
+                time.sleep(delay)
+                continue
+            
+            # Si no es 429 o se acabaron los intentos, propagar error
+            body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Gemini API error {e.code}: {body}") from e
+    
     # Extraer texto de la respuesta
     try:
         return result["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError):
-        raise RuntimeError(f"Respuesta inesperada de Gemini: {json.dumps(result, indent=2)}")
+    except (KeyError, IndexError, UnboundLocalError):
+        # UnboundLocalError si result no se definio (caso raro de fallo silencioso en loop)
+        raise RuntimeError(f"Respuesta inesperada de Gemini: {json.dumps(result, indent=2) if 'result' in locals() else 'No data'}")
