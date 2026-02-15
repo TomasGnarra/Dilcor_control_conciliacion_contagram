@@ -72,17 +72,39 @@ stepper(steps, current)
 # ═══════════════════════════════════════════════════════
 section_div("Cobranzas Conciliadas", "📥")
 df_cob = resultado.get("cobranzas_csv", pd.DataFrame())
+df_cob_filtered = df_cob.copy()
+
+df_pag = resultado.get("pagos_csv", pd.DataFrame())
+df_pag_filtered = df_pag.copy()
 
 if not df_cob.empty:
-    with st.expander(f"👁️ Vista previa ({len(df_cob)} registros)", expanded=False):
-        render_data_table(df_cob.head(20), key="preview_cob")
-        if len(df_cob) > 20:
-            st.caption(f"Mostrando 20 de {len(df_cob)} registros")
+    # Filtro de estado
+    all_statuses = sorted([str(s) for s in df_cob["Status"].unique() if pd.notna(s)])
+    default_statuses = [s for s in all_statuses if s in ["MATCHED", "SUGGESTED"]]
+    
+    col_filter, _ = st.columns([2, 1])
+    with col_filter:
+        selected_statuses = st.multiselect(
+            "Filtrar por Estado para Exportar",
+            all_statuses,
+            default=default_statuses,
+            key="export_cob_status"
+        )
 
-    monto_col = "Monto Cobrado" if "Monto Cobrado" in df_cob.columns else None
+    if selected_statuses:
+        df_cob_filtered = df_cob[df_cob["Status"].isin(selected_statuses)]
+    else:
+        df_cob_filtered = df_cob
+
+    with st.expander(f"👁️ Vista previa ({len(df_cob_filtered)} registros)", expanded=False):
+        render_data_table(df_cob_filtered.head(20), key="preview_cob")
+        if len(df_cob_filtered) > 20:
+            st.caption(f"Mostrando 20 de {len(df_cob_filtered)} registros")
+
+    monto_col = "Monto Cobrado" if "Monto Cobrado" in df_cob_filtered.columns else None
     if monto_col:
-        st.markdown(f"**{len(df_cob)} cobranzas** | Total: **{format_money(df_cob[monto_col].sum())}**")
-    download_csv(df_cob, "subir_cobranzas_contagram.csv", "📥 Descargar Cobranzas CSV")
+        st.markdown(f"**{len(df_cob_filtered)} cobranzas** | Total: **{format_money(df_cob_filtered[monto_col].sum())}**")
+    download_csv(df_cob_filtered, "subir_cobranzas_contagram.csv", "📥 Descargar Cobranzas CSV")
 else:
     st.info("Sin cobranzas conciliadas para exportar.")
 
@@ -91,18 +113,36 @@ else:
 # PREVIEW Y DESCARGA: PAGOS
 # ═══════════════════════════════════════════════════════
 section_div("Pagos a Proveedores", "📤")
-df_pag = resultado.get("pagos_csv", pd.DataFrame())
+# df_pag y df_pag_filtered ya definidos arriba
 
 if not df_pag.empty:
-    with st.expander(f"👁️ Vista previa ({len(df_pag)} registros)", expanded=False):
-        render_data_table(df_pag.head(20), key="preview_pag")
-        if len(df_pag) > 20:
-            st.caption(f"Mostrando 20 de {len(df_pag)} registros")
+    # Filtro de estado
+    all_statuses_p = sorted([str(s) for s in df_pag["match_nivel"].unique() if pd.notna(s)]) # Nota: pagos usa match_nivel en _generar_pagos_csv
+    default_statuses_p = [s for s in all_statuses_p if s in ["match_exacto", "probable_duda_id", "probable_dif_cambio"]]
+    
+    col_filter_p, _ = st.columns([2, 1])
+    with col_filter_p:
+        selected_statuses_p = st.multiselect(
+            "Filtrar por Estado para Exportar",
+            all_statuses_p,
+            default=default_statuses_p,
+            key="export_pag_status"
+        )
+    
+    if selected_statuses_p:
+        df_pag_filtered = df_pag[df_pag["match_nivel"].isin(selected_statuses_p)]
+    else:
+        df_pag_filtered = df_pag
 
-    monto_col_p = "Monto Pagado" if "Monto Pagado" in df_pag.columns else None
+    with st.expander(f"👁️ Vista previa ({len(df_pag_filtered)} registros)", expanded=False):
+        render_data_table(df_pag_filtered.head(20), key="preview_pag")
+        if len(df_pag_filtered) > 20:
+            st.caption(f"Mostrando 20 de {len(df_pag_filtered)} registros")
+
+    monto_col_p = "Monto Pagado" if "Monto Pagado" in df_pag_filtered.columns else None
     if monto_col_p:
-        st.markdown(f"**{len(df_pag)} pagos** | Total: **{format_money(df_pag[monto_col_p].sum())}**")
-    download_csv(df_pag, "subir_pagos_contagram.csv", "📥 Descargar Pagos CSV")
+        st.markdown(f"**{len(df_pag_filtered)} pagos** | Total: **{format_money(df_pag_filtered[monto_col_p].sum())}**")
+    download_csv(df_pag_filtered, "subir_pagos_contagram.csv", "📥 Descargar Pagos CSV")
 else:
     st.info("Sin pagos conciliados para exportar.")
 
@@ -131,10 +171,10 @@ section_div("Descargar Todo", "📦")
 def generar_zip():
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        if not df_cob.empty:
-            zf.writestr("subir_cobranzas_contagram.csv", df_cob.to_csv(index=False))
-        if not df_pag.empty:
-            zf.writestr("subir_pagos_contagram.csv", df_pag.to_csv(index=False))
+        if not df_cob_filtered.empty:
+            zf.writestr("subir_cobranzas_contagram.csv", df_cob_filtered.to_csv(index=False))
+        if not df_pag_filtered.empty:
+            zf.writestr("subir_pagos_contagram.csv", df_pag_filtered.to_csv(index=False))
         if not df_exc.empty:
             # Excel para excepciones
             exc_buffer = io.BytesIO()

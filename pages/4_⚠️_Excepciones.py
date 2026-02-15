@@ -67,11 +67,24 @@ kpi_card("Sugerencias", f"{n_duda + n_dif}", f"{n_duda} duda ID + {n_dif} dif. c
 # TABS PRINCIPALES: BANCO vs CONTAGRAM
 # ═══════════════════════════════════════════════════════
 st.markdown("###")
+
+col_t, _ = st.columns([1, 3])
+mostrar_todo = col_t.toggle("Mostrar todos los movimientos (incluidos conciliados)", value=False)
+
+# Redefinir datasets para las tablas segun toggle
+if mostrar_todo:
+    df_exc = resultado.get("resultados", pd.DataFrame())
+    df_exc_ctg = resultado.get("detalle_facturas", pd.DataFrame())
+
+# Recalcular monto_col para el dataset activo (puede cambiar de Monto a monto)
+monto_col = "Monto" if "Monto" in df_exc.columns else "monto" if "monto" in df_exc.columns else None
+
 tab_banco, tab_ctg = st.tabs(["🏛️ Excepciones Banco", "📄 Excepciones Contagram"])
 
 with tab_banco:
     if not df_exc.empty:
-        section_div("Pendientes en Banco (Sobran o faltan identificar)", "🏛️")
+        title_banco = "Todos los movimientos Bancarios" if mostrar_todo else "Pendientes en Banco (Sobran o faltan identificar)"
+        section_div(title_banco, "🏛️")
 
         col_search, col_monto_filter = st.columns([2, 1])
         with col_search:
@@ -152,7 +165,8 @@ with tab_banco:
 
 with tab_ctg:
     if not df_exc_ctg.empty:
-        section_div("Pendientes en Contagram (No aparecen en Banco)", "📄")
+        title_ctg = "Todas las facturas de Contagram" if mostrar_todo else "Pendientes en Contagram (No aparecen en Banco)"
+        section_div(title_ctg, "📄")
         
         col_s_ctg, col_m_ctg = st.columns([2, 1])
         with col_s_ctg:

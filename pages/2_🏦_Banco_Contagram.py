@@ -175,13 +175,31 @@ if not df_full.empty:
         else:
             nivel_sel = "Todos"
 
+    # Buscador general
+    busqueda = st.text_input("🔍 Buscar (Descripción, Referencia, CUIT, Importe...)", placeholder="Escribe para filtrar...", key="search_banco_gral")
+
     df_filtered = df_full.copy()
+
+    # Filtros de selectbox
     if banco_sel != "Todos" and "banco" in df_filtered.columns:
         df_filtered = df_filtered[df_filtered["banco"] == banco_sel]
     if clasif_sel != "Todos" and "clasificacion" in df_filtered.columns:
         df_filtered = df_filtered[df_filtered["clasificacion"] == clasif_sel]
     if nivel_sel != "Todos" and match_col:
         df_filtered = df_filtered[df_filtered[match_col].astype(str) == nivel_sel]
+
+    # Filtro de texto
+    if busqueda:
+        term = busqueda.lower()
+        mask = pd.Series(False, index=df_filtered.index)
+        # Buscar en columnas de texto principales
+        cols_msg = [c for c in df_filtered.columns if df_filtered[c].dtype == object]
+        for c in cols_msg:
+             mask |= df_filtered[c].fillna("").astype(str).str.lower().str.contains(term, na=False)
+        # Tambien buscar en montos (convertidos a string)
+        if "monto" in df_filtered.columns:
+             mask |= df_filtered["monto"].astype(str).str.contains(term, na=False)
+        df_filtered = df_filtered[mask]
 
     # Ordenar columnas prioritarias
     if st.session_state.get("modo_real"):

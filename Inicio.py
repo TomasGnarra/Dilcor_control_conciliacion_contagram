@@ -242,6 +242,17 @@ def load_manual_data():
         st.session_state["banco_seleccionado"] = banco_seleccionado
 
         st.markdown("**Extracto bancario** — Soporta Galicia, Santander, Mercado Pago (CSV o XLSX)")
+
+        # --- Tipo de movimiento a conciliar ---
+        tipo_mov = st.radio(
+            "Tipo de movimiento a conciliar",
+            ["Ambos", "Solo Créditos", "Solo Débitos"],
+            index=0,
+            horizontal=True,
+            help="Créditos = cobranzas (dinero que entra). Débitos = pagos (dinero que sale). Ambos = todo.",
+        )
+        st.session_state["filtro_tipo_movimiento"] = tipo_mov
+
         f_bancos = st.file_uploader(
             "Subir extracto(s) bancario(s)",
             type=["csv", "xlsx", "xls"],
@@ -342,6 +353,7 @@ if data_ready:
                     match_config=match_config_override,
                     medios_pago_filtro=medios_pago_sel if modo == "Manual (subir archivos)" else None,
                     filtro_medio_contiene=st.session_state.get("filtro_medio_contiene", False) if modo == "Manual (subir archivos)" else False,
+                    filtro_tipo_movimiento=st.session_state.get("filtro_tipo_movimiento", "Ambos") if modo == "Manual (subir archivos)" else "Ambos",
                 )
             else:
                 motor = MotorConciliacion(tabla_param)

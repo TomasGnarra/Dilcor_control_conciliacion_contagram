@@ -70,6 +70,7 @@ class MotorConciliacion:
         match_config: dict = None,
         medios_pago_filtro: list[str] = None,
         filtro_medio_contiene: bool = False,
+        filtro_tipo_movimiento: str = "Ambos",
     ) -> dict:
         """Procesa datos reales: usa CUIT + flags de medio de cobro."""
         logger = logging.getLogger(__name__)
@@ -83,6 +84,14 @@ class MotorConciliacion:
 
         extracto_unificado = pd.concat(extractos_normalizados, ignore_index=True)
         extracto_unificado = extracto_unificado.sort_values("fecha").reset_index(drop=True)
+
+        # 1b. Filtrar por tipo de movimiento (Créditos / Débitos / Ambos)
+        if filtro_tipo_movimiento == "Solo Créditos":
+            extracto_unificado = extracto_unificado[extracto_unificado["tipo"] == "CREDITO"].copy()
+            logger.info("Extracto filtrado: solo CREDITOS (%d movimientos)", len(extracto_unificado))
+        elif filtro_tipo_movimiento == "Solo Débitos":
+            extracto_unificado = extracto_unificado[extracto_unificado["tipo"] == "DEBITO"].copy()
+            logger.info("Extracto filtrado: solo DEBITOS (%d movimientos)", len(extracto_unificado))
 
         # 2. Normalizar ventas Contagram (agrega flags de medio de cobro)
         ventas_norm = normalizar_ventas_contagram(ventas_contagram)
