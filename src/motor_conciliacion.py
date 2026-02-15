@@ -7,6 +7,7 @@ Motor de Conciliacion - Orquesta el proceso completo:
 5. KPIs de impacto financiero (Money Gap)
 """
 import pandas as pd
+import logging
 from datetime import datetime
 
 from src.normalizador import normalizar, detectar_banco
@@ -67,8 +68,13 @@ class MotorConciliacion:
         extractos_bancarios: list[pd.DataFrame],
         ventas_contagram: pd.DataFrame,
         match_config: dict = None,
+        medios_pago_filtro: list[str] = None,
+        filtro_medio_contiene: bool = False,
+        filtro_tipo_movimiento: str = "Ambos",
     ) -> dict:
         """Procesa datos reales: usa CUIT + flags de medio de cobro."""
+        logger = logging.getLogger(__name__)
+
         # 1. Normalizar extracto bancario
         extractos_normalizados = []
         for df in extractos_bancarios:
@@ -79,8 +85,35 @@ class MotorConciliacion:
         extracto_unificado = pd.concat(extractos_normalizados, ignore_index=True)
         extracto_unificado = extracto_unificado.sort_values("fecha").reset_index(drop=True)
 
+        # 1b. Filtrar por tipo de movimiento (Créditos / Débitos / Ambos)
+        if filtro_tipo_movimiento == "Solo Créditos":
+            extracto_unificado = extracto_unificado[extracto_unificado["tipo"] == "CREDITO"].copy()
+            logger.info("Extracto filtrado: solo CREDITOS (%d movimientos)", len(extracto_unificado))
+        elif filtro_tipo_movimiento == "Solo Débitos":
+            extracto_unificado = extracto_unificado[extracto_unificado["tipo"] == "DEBITO"].copy()
+            logger.info("Extracto filtrado: solo DEBITOS (%d movimientos)", len(extracto_unificado))
+
         # 2. Normalizar ventas Contagram (agrega flags de medio de cobro)
         ventas_norm = normalizar_ventas_contagram(ventas_contagram)
+        self._ventas_norm_todas = ventas_norm  # Guardar todas antes de filtrar
+
+        # 2b. Filtrar ventas por medio de pago (si se especifica filtro)
+        self._ventas_excluidas = pd.DataFrame()
+        if medios_pago_filtro and len(medios_pago_filtro) > 0:
+            total_antes = len(ventas_norm)
+            if filtro_medio_contiene:
+                mask = ventas_norm["medio_cobro"].fillna("").apply(
+                    lambda x: any(sel.lower() in str(x).lower() for sel in medios_pago_filtro)
+                )
+            else:
+                mask = ventas_norm["medio_cobro"].isin(medios_pago_filtro)
+            self._ventas_excluidas = ventas_norm[~mask].copy()
+            ventas_norm = ventas_norm[mask].copy()
+            modo_txt = "contiene" if filtro_medio_contiene else "exacto"
+            logger.info(
+                "Ventas filtradas: %d de %d filas (modo: %s, medios de pago: %s)",
+                len(ventas_norm), total_antes, modo_txt, medios_pago_filtro,
+            )
 
         # 3. Conciliar con motor real (CUIT-based, 3 niveles)
         self.resultados, self._ventas_usadas = conciliar_real(extracto_unificado, ventas_norm, match_config)
@@ -160,9 +193,8 @@ class MotorConciliacion:
             "de_mas": 0, "de_menos": 0, "diferencia_neta": 0,
         }
 
-        # Monto ventas contagram (solo Santander cobrado)
-        ventas_santander = ventas[ventas.get("contiene_santander", pd.Series(dtype=bool)) == True]
-        monto_ventas = round(ventas_santander["Monto Total"].sum(), 2) if not ventas_santander.empty else 0
+        # Monto ventas contagram (ventas ya filtradas por medio de pago)
+        monto_ventas = round(ventas["Monto Total"].sum(), 2) if not ventas.empty else 0
 
         self.stats = {
             "total_movimientos": total,
@@ -213,7 +245,11 @@ class MotorConciliacion:
             }
 
     def _generar_cobranzas_csv_real(self) -> pd.DataFrame:
-        """Genera CSV de cobranzas para datos reales (incluye todos los estados)."""
+        """Genera CSV de cobranzas para datos reales.
+        
+        Desglosa sum-matches en filas individuales por factura,
+        respetando el formato de importacion de Contagram (1 fila = 1 factura).
+        """
         df = self.resultados
         cobranzas = df[
             (df.get("clasificacion", pd.Series(dtype=str)) == "cobranza")
@@ -222,24 +258,61 @@ class MotorConciliacion:
         if cobranzas.empty:
             return pd.DataFrame()
 
-        return pd.DataFrame({
-            "Fecha": cobranzas["fecha"].dt.strftime("%d/%m/%Y") if hasattr(cobranzas["fecha"], "dt") else cobranzas["fecha"],
-            "Cliente": cobranzas.get("nombre_contagram", ""),
-            "CUIT Banco": cobranzas.get("cuit_banco", ""),
-            "Monto Cobrado": cobranzas["monto"],
-            "Factura": cobranzas.get("factura_match", ""),
-            "Status": cobranzas.get("conciliation_status", ""),
-            "Tag": cobranzas.get("conciliation_tag", ""),
-            "Confianza": cobranzas.get("conciliation_confidence", ""),
-            "Razon": cobranzas.get("conciliation_reason", ""),
-            "Tipo Match": cobranzas.get("tipo_match_monto", "").fillna("—") if "tipo_match_monto" in cobranzas.columns else "—",
-            "Cant Facturas": cobranzas.get("facturas_count", 0),
-            "Diferencia $": cobranzas.get("diferencia_monto", 0),
-            "Banco": cobranzas["banco"],
-            "Referencia": cobranzas["referencia"],
-            "Descripcion": cobranzas["descripcion"],
-            "Nombre Banco Extraido": cobranzas.get("nombre_banco_extraido", ""),
-        })
+        rows = []
+        for _, row in cobranzas.iterrows():
+            # Campos compartidos del movimiento bancario
+            fecha = row["fecha"].strftime("%d/%m/%Y") if hasattr(row["fecha"], "strftime") else str(row["fecha"])
+            base = {
+                "Fecha": fecha,
+                "Cliente": row.get("nombre_contagram", ""),
+                "CUIT Banco": row.get("cuit_banco", ""),
+                "Status": row.get("conciliation_status", ""),
+                "Tag": row.get("conciliation_tag", ""),
+                "Confianza": row.get("conciliation_confidence", ""),
+                "Razon": row.get("conciliation_reason", ""),
+                "Tipo Match": row.get("tipo_match_monto", "—") or "—",
+                "Cant Facturas": row.get("facturas_count", 0),
+                "Diferencia $": row.get("diferencia_monto", 0),
+                "Banco": row.get("banco", ""),
+                "Referencia": row.get("referencia", ""),
+                "Descripcion": row.get("descripcion", ""),
+                "Nombre Banco Extraido": row.get("nombre_banco_extraido", ""),
+                "Monto Banco": row.get("monto", 0),
+            }
+
+            detalle = row.get("facturas_detalle")
+
+            if detalle and isinstance(detalle, list) and len(detalle) > 0:
+                # Expandir: 1 fila por factura
+                for d in detalle:
+                    rows.append({
+                        **base,
+                        "ID Cliente": d.get("id", ""),
+                        "Nro Factura": d.get("nro_factura", ""),
+                        "Monto Cobrado": d.get("monto", 0),
+                    })
+            else:
+                # Sin detalle (fallback): usar datos del movimiento
+                rows.append({
+                    **base,
+                    "ID Cliente": row.get("id_contagram", ""),
+                    "Nro Factura": row.get("factura_match", ""),
+                    "Monto Cobrado": row.get("monto", 0),
+                })
+
+        result = pd.DataFrame(rows)
+        
+        # Ordenar columnas: poner las mas importantes primero
+        priority = [
+            "Fecha", "ID Cliente", "Cliente", "CUIT Banco",
+            "Monto Cobrado", "Nro Factura", "Status", "Tag",
+            "Confianza", "Razon", "Tipo Match", "Cant Facturas",
+            "Diferencia $", "Monto Banco", "Banco", "Referencia",
+            "Descripcion", "Nombre Banco Extraido",
+        ]
+        ordered = [c for c in priority if c in result.columns]
+        remaining = [c for c in result.columns if c not in ordered]
+        return result[ordered + remaining]
 
     def _generar_excepciones_real(self) -> pd.DataFrame:
         """Genera excepciones para datos reales con campos extendidos para analisis."""
