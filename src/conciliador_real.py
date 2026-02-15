@@ -447,6 +447,9 @@ def _evaluar_match(
     diferencia = round(monto - monto_venta, 2)
 
     # ─── Caja GRANDE: no auto-conciliar, dejar para Fase 2 desglose ──
+    # Detalle individual de la factura (para desglose en CSV)
+    detalle = [{"id": venta.get("ID Cliente", ""), "nro_factura": str(nro_factura), "monto": monto_venta}]
+
     if contiene_caja:
         # NO marcar venta como usada — Fase 2 intentara desglose
         return {
@@ -465,6 +468,7 @@ def _evaluar_match(
             "confianza": 20,
             "tipo_match_monto": tipo_monto,
             "facturas_count": 1,
+            "facturas_detalle": detalle,
         }
 
     en_ventana_1 = _fecha_en_ventana(fecha_banco, fecha_venta, cfg["ventana_dias_nivel1"])
@@ -489,6 +493,7 @@ def _evaluar_match(
             "confianza": 95,
             "tipo_match_monto": tipo_monto,
             "facturas_count": 1,
+            "facturas_detalle": detalle,
         }
 
     # ─── NIVEL 2: SUGGESTED (revision manual) ───────────────────────
@@ -522,6 +527,7 @@ def _evaluar_match(
             "confianza": confianza,
             "tipo_match_monto": tipo_monto,
             "facturas_count": 1,
+            "facturas_detalle": detalle,
         }
 
     # Fuera de ventana temporal
@@ -542,6 +548,7 @@ def _evaluar_match(
         "confianza": 60,
         "tipo_match_monto": tipo_monto,
         "facturas_count": 1,
+        "facturas_detalle": detalle,
     }
 
 
@@ -610,6 +617,12 @@ def _evaluar_sum_match(
     facturas = " + ".join(str(v["venta"].get("Nro Factura", "")) for v in ventas_list)
     count = len(ventas_list)
 
+    # Detalle individual de cada factura (para desglose en CSV)
+    detalle = [
+        {"id": v["venta"].get("ID Cliente", ""), "nro_factura": str(v["venta"].get("Nro Factura", "")), "monto": v["monto"]}
+        for v in ventas_list
+    ]
+
     if alguna_caja:
         # NO marcar ventas como usadas — Fase 2 intentara desglose
         return {
@@ -625,6 +638,7 @@ def _evaluar_sum_match(
             "confianza": 25,
             "tipo_match_monto": sum_result["tipo"],
             "facturas_count": count,
+            "facturas_detalle": detalle,
         }
 
     # Marcar ventas como usadas (solo si no es caja mixta)
@@ -648,6 +662,7 @@ def _evaluar_sum_match(
             "confianza": 90,
             "tipo_match_monto": sum_result["tipo"],
             "facturas_count": count,
+            "facturas_detalle": detalle,
         }
 
     return {
@@ -666,6 +681,7 @@ def _evaluar_sum_match(
         "confianza": 70,
         "tipo_match_monto": sum_result["tipo"],
         "facturas_count": count,
+        "facturas_detalle": detalle,
     }
 
 

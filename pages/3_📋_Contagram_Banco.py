@@ -114,9 +114,12 @@ with tab_facturas:
             
             pct_conciliacion = (len(conciliada) / n_total * 100) if n_total > 0 else 0
             
+            # KPI 3: Monto Conciliado y Cantidad de Facturas
+            monto_conciliado = conciliada["Cobrado"].sum() if "Cobrado" in conciliada.columns else 0
+            
             kpi_card("Total Facturado", format_money(total_facturado), f"{n_total} facturas", "neutral", c1)
             kpi_card("Cobrado Total", format_money(total_cobrado), f"Pendiente: {format_money(pendiente)}", "neutral", c2)
-            kpi_card("Conciliadas", f"{len(conciliada)} ({pct_conciliacion:.1f}%)", "Match en Banco", "success", c3)
+            kpi_card("Conciliadas", format_money(monto_conciliado), f"{len(conciliada)} Facturas ({pct_conciliacion:.1f}%)", "success", c3)
             kpi_card("Sin Match", f"{len(sin_match)}", "No halladas en Banco", "danger", c4)
 
             # Grafico por Medio de Cobro + Dona
@@ -179,11 +182,30 @@ with tab_facturas:
                     df_view = df_view[df_view["Estado"].isin(filtro_estado)]
 
             with c3:
-                if "Medio de Cobro" in df_view.columns:
-                    medios = sorted([m for m in df_det["Medio de Cobro"].unique() if pd.notna(m) and m != ""])
-                    filtro_medio = st.multiselect("Medio de Cobro", medios, default=[], key="f_medio_ctg")
-                    if filtro_medio:
-                        df_view = df_view[df_view["Medio de Cobro"].isin(filtro_medio)]
+                if "Cliente" in df_det.columns:
+                    clientes = sorted([c for c in df_det["Cliente"].unique() if pd.notna(c) and c != ""])
+                    filtro_cliente = st.multiselect("Cliente", clientes, default=[], key="f_cliente_ctg")
+                    if filtro_cliente:
+                        df_view = df_view[df_view["Cliente"].isin(filtro_cliente)]
+
+            # Buscador de texto
+            busqueda = st.text_input(
+                "🔍 Buscar (Cliente, CUIT, Medio...)",
+                placeholder="Escribe para filtrar...",
+                key="search_ctg_gral",
+            )
+
+            if busqueda:
+                term = busqueda.lower()
+                mask = pd.Series(False, index=df_view.index)
+                for col in df_view.columns:
+                    if df_view[col].dtype == object:
+                        mask |= df_view[col].fillna("").astype(str).str.lower().str.contains(term, na=False)
+                if "Cobrado" in df_view.columns:
+                    mask |= df_view["Cobrado"].astype(str).str.contains(term, na=False)
+                if "Total Venta" in df_view.columns:
+                    mask |= df_view["Total Venta"].astype(str).str.contains(term, na=False)
+                df_view = df_view[mask]
 
             render_data_table(df_view, key="facturas_table")
 

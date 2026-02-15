@@ -321,23 +321,24 @@ def stepper(steps, current_step=0):
             text_color = "#999"
             icon = str(i + 1)
 
+        # HTML sin indentacion para evitar que st.markdown lo tome como codigo
         items_html += f"""
-        <div style="display:flex; align-items:flex-start; gap:0.8rem; margin-bottom:1rem;">
-            <div style="min-width:32px; height:32px; border-radius:50%; {circle_style}
-                        display:flex; align-items:center; justify-content:center;
-                        font-weight:700; font-size:0.85rem;">{icon}</div>
-            <div>
-                <div style="font-weight:700; color:{text_color}; font-size:0.9rem;">{step['title']}</div>
-                <div style="font-size:0.8rem; color:#888;">{step.get('desc', '')}</div>
-            </div>
-        </div>
-        """
+<div style="display:flex; align-items:flex-start; gap:0.8rem; margin-bottom:1rem;">
+    <div style="min-width:32px; height:32px; border-radius:50%; {circle_style}
+                display:flex; align-items:center; justify-content:center;
+                font-weight:700; font-size:0.85rem;">{icon}</div>
+    <div>
+        <div style="font-weight:700; color:{text_color}; font-size:0.9rem;">{step['title']}</div>
+        <div style="font-size:0.8rem; color:#888;">{step.get('desc', '')}</div>
+    </div>
+</div>
+"""
 
     st.markdown(f"""
-    <div style="background:white; border:1px solid #E0E0E0; border-radius:12px; padding:1.5rem; margin:1rem 0;">
-        {items_html}
-    </div>
-    """, unsafe_allow_html=True)
+<div style="background:white; border:1px solid #E0E0E0; border-radius:12px; padding:1.5rem; margin:1rem 0;">
+    {items_html}
+</div>
+""", unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════
