@@ -170,10 +170,10 @@ if not df_full.empty:
                 match_col = c
                 break
         if match_col:
-            niveles = ["Todos"] + sorted([str(n) for n in df_full[match_col].dropna().unique()])
-            nivel_sel = st.selectbox("Nivel Match", niveles, key="detalle_nivel")
+            niveles = sorted([str(n) for n in df_full[match_col].dropna().unique()])
+            nivel_sel = st.multiselect("Nivel Match", niveles, default=[], key="detalle_nivel")
         else:
-            nivel_sel = "Todos"
+            nivel_sel = []
 
     # Buscador general
     busqueda = st.text_input("🔍 Buscar (Descripción, Referencia, CUIT, Importe...)", placeholder="Escribe para filtrar...", key="search_banco_gral")
@@ -185,8 +185,9 @@ if not df_full.empty:
         df_filtered = df_filtered[df_filtered["banco"] == banco_sel]
     if clasif_sel != "Todos" and "clasificacion" in df_filtered.columns:
         df_filtered = df_filtered[df_filtered["clasificacion"] == clasif_sel]
-    if nivel_sel != "Todos" and match_col:
-        df_filtered = df_filtered[df_filtered[match_col].astype(str) == nivel_sel]
+    if nivel_sel and match_col:
+        df_filtered = df_filtered[df_filtered[match_col].astype(str).isin(nivel_sel)]
+
 
     # Filtro de texto
     if busqueda:
@@ -222,6 +223,11 @@ if not df_full.empty:
     ordered_cols = [c for c in priority_cols if c in df_filtered.columns]
     remaining_cols = [c for c in df_filtered.columns if c not in ordered_cols]
     all_cols = ordered_cols + remaining_cols
+
+    # Mostrar total sumado
+    if "monto" in df_filtered.columns:
+        total_monto = df_filtered["monto"].sum()
+        st.markdown(f"**Total Filtrado: {len(df_filtered)} movimientos | {format_money(total_monto)}**")
 
     st.dataframe(
         df_filtered[all_cols],

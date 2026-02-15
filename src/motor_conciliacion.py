@@ -245,7 +245,11 @@ class MotorConciliacion:
             }
 
     def _generar_cobranzas_csv_real(self) -> pd.DataFrame:
-        """Genera CSV de cobranzas para datos reales (incluye todos los estados)."""
+        """Genera CSV de cobranzas para datos reales.
+        
+        Desglosa sum-matches en filas individuales por factura,
+        respetando el formato de importacion de Contagram (1 fila = 1 factura).
+        """
         df = self.resultados
         cobranzas = df[
             (df.get("clasificacion", pd.Series(dtype=str)) == "cobranza")
@@ -254,24 +258,61 @@ class MotorConciliacion:
         if cobranzas.empty:
             return pd.DataFrame()
 
-        return pd.DataFrame({
-            "Fecha": cobranzas["fecha"].dt.strftime("%d/%m/%Y") if hasattr(cobranzas["fecha"], "dt") else cobranzas["fecha"],
-            "Cliente": cobranzas.get("nombre_contagram", ""),
-            "CUIT Banco": cobranzas.get("cuit_banco", ""),
-            "Monto Cobrado": cobranzas["monto"],
-            "Factura": cobranzas.get("factura_match", ""),
-            "Status": cobranzas.get("conciliation_status", ""),
-            "Tag": cobranzas.get("conciliation_tag", ""),
-            "Confianza": cobranzas.get("conciliation_confidence", ""),
-            "Razon": cobranzas.get("conciliation_reason", ""),
-            "Tipo Match": cobranzas.get("tipo_match_monto", "").fillna("—") if "tipo_match_monto" in cobranzas.columns else "—",
-            "Cant Facturas": cobranzas.get("facturas_count", 0),
-            "Diferencia $": cobranzas.get("diferencia_monto", 0),
-            "Banco": cobranzas["banco"],
-            "Referencia": cobranzas["referencia"],
-            "Descripcion": cobranzas["descripcion"],
-            "Nombre Banco Extraido": cobranzas.get("nombre_banco_extraido", ""),
-        })
+        rows = []
+        for _, row in cobranzas.iterrows():
+            # Campos compartidos del movimiento bancario
+            fecha = row["fecha"].strftime("%d/%m/%Y") if hasattr(row["fecha"], "strftime") else str(row["fecha"])
+            base = {
+                "Fecha": fecha,
+                "Cliente": row.get("nombre_contagram", ""),
+                "CUIT Banco": row.get("cuit_banco", ""),
+                "Status": row.get("conciliation_status", ""),
+                "Tag": row.get("conciliation_tag", ""),
+                "Confianza": row.get("conciliation_confidence", ""),
+                "Razon": row.get("conciliation_reason", ""),
+                "Tipo Match": row.get("tipo_match_monto", "—") or "—",
+                "Cant Facturas": row.get("facturas_count", 0),
+                "Diferencia $": row.get("diferencia_monto", 0),
+                "Banco": row.get("banco", ""),
+                "Referencia": row.get("referencia", ""),
+                "Descripcion": row.get("descripcion", ""),
+                "Nombre Banco Extraido": row.get("nombre_banco_extraido", ""),
+                "Monto Banco": row.get("monto", 0),
+            }
+
+            detalle = row.get("facturas_detalle")
+
+            if detalle and isinstance(detalle, list) and len(detalle) > 0:
+                # Expandir: 1 fila por factura
+                for d in detalle:
+                    rows.append({
+                        **base,
+                        "ID Cliente": d.get("id", ""),
+                        "Nro Factura": d.get("nro_factura", ""),
+                        "Monto Cobrado": d.get("monto", 0),
+                    })
+            else:
+                # Sin detalle (fallback): usar datos del movimiento
+                rows.append({
+                    **base,
+                    "ID Cliente": row.get("id_contagram", ""),
+                    "Nro Factura": row.get("factura_match", ""),
+                    "Monto Cobrado": row.get("monto", 0),
+                })
+
+        result = pd.DataFrame(rows)
+        
+        # Ordenar columnas: poner las mas importantes primero
+        priority = [
+            "Fecha", "ID Cliente", "Cliente", "CUIT Banco",
+            "Monto Cobrado", "Nro Factura", "Status", "Tag",
+            "Confianza", "Razon", "Tipo Match", "Cant Facturas",
+            "Diferencia $", "Monto Banco", "Banco", "Referencia",
+            "Descripcion", "Nombre Banco Extraido",
+        ]
+        ordered = [c for c in priority if c in result.columns]
+        remaining = [c for c in result.columns if c not in ordered]
+        return result[ordered + remaining]
 
     def _generar_excepciones_real(self) -> pd.DataFrame:
         """Genera excepciones para datos reales con campos extendidos para analisis."""

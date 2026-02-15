@@ -271,7 +271,40 @@ def load_manual_data():
         uploaded_ventas = st.file_uploader("Subir archivo Contagram (CSV o XLSX)", type=["csv", "xlsx", "xls"], key="ventas")
         if uploaded_ventas:
             ventas = _leer_archivo(uploaded_ventas)
-            st.success(f"{uploaded_ventas.name}: {len(ventas)} ventas cargadas")
+            total_orig = len(ventas)
+            
+            # --- Filtro de Tipo de Comprobante ---
+            col_tipo = next((c for c in ventas.columns if c.lower().strip() in ["tipo", "tipo de comprobante", "comprobante", "tipo comprobante"]), None)
+            
+            if col_tipo:
+                st.markdown("##### Filtrar contenido del archivo")
+                tipos_disp = sorted(ventas[col_tipo].dropna().astype(str).unique())
+                
+                # Preset rapido
+                filtro_rapido = st.radio(
+                    "Selección rápida:", 
+                    ["Todo", "Solo Ventas/Cobros", "Solo Pagos"], 
+                    horizontal=True,
+                    key="filtro_tipo_radio"
+                )
+                
+                default_sel = tipos_disp
+                if filtro_rapido == "Solo Ventas/Cobros":
+                    # Keywords de ventas (excluyendo pagos explícitos)
+                    kw_ventas = ["factura", "recibo", "nota de debito", "nd", "fce", "ticket", "cobro"]
+                    default_sel = [t for t in tipos_disp if any(k in t.lower() for k in kw_ventas) and "orden de pago" not in t.lower()]
+                elif filtro_rapido == "Solo Pagos":
+                    # Keywords de pagos
+                    kw_pagos = ["orden de pago", "op", "pago", "fondo fijo", "gasto"]
+                    default_sel = [t for t in tipos_disp if any(k in t.lower() for k in kw_pagos)]
+                
+                tipos_sel = st.multiselect("Tipos de comprobante a incluir:", tipos_disp, default=default_sel, key=f"filtro_tipo_multi_{filtro_rapido}")
+                
+                if len(tipos_sel) < len(tipos_disp):
+                    ventas = ventas[ventas[col_tipo].astype(str).isin(tipos_sel)]
+                    st.caption(f"ℹ️ Filtrado: {len(ventas)} registros activos (de {total_orig} originales)")
+
+            st.success(f"{uploaded_ventas.name}: {len(ventas)} registros procesables")
 
             cols = [c.lower().strip() for c in ventas.columns]
             cols_requeridas = {"cliente", "cobrado"}

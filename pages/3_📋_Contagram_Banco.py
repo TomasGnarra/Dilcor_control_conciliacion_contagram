@@ -114,9 +114,12 @@ with tab_facturas:
             
             pct_conciliacion = (len(conciliada) / n_total * 100) if n_total > 0 else 0
             
+            # KPI 3: Monto Conciliado y Cantidad de Facturas
+            monto_conciliado = conciliada["Cobrado"].sum() if "Cobrado" in conciliada.columns else 0
+            
             kpi_card("Total Facturado", format_money(total_facturado), f"{n_total} facturas", "neutral", c1)
             kpi_card("Cobrado Total", format_money(total_cobrado), f"Pendiente: {format_money(pendiente)}", "neutral", c2)
-            kpi_card("Conciliadas", f"{len(conciliada)} ({pct_conciliacion:.1f}%)", "Match en Banco", "success", c3)
+            kpi_card("Conciliadas", format_money(monto_conciliado), f"{len(conciliada)} Facturas ({pct_conciliacion:.1f}%)", "success", c3)
             kpi_card("Sin Match", f"{len(sin_match)}", "No halladas en Banco", "danger", c4)
 
             # Grafico por Medio de Cobro + Dona
