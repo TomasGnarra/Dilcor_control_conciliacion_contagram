@@ -416,31 +416,65 @@ if data_ready:
 
         # ── BLOQUE COBROS ──
         section_div("COBROS (Ingresos)", "💰")
-        c1, c2, c3, c4, c5, c6 = st.columns(6)
-        kpi_card("Cobrado en Bancos", format_money(cb.get("monto_total", 0)), f"{cb.get('total', 0)} movimientos", "neutral", c1)
-        kpi_card("Facturado Contagram", format_money(stats.get("monto_ventas_contagram", 0)), "Ventas pendientes", "neutral", c2)
-        gap_cobros = stats.get("revenue_gap", 0)
-        kpi_card("Revenue Gap", format_money(gap_cobros), "Dif. Banco vs Contagram", "success" if abs(gap_cobros) < 10000 else "danger", c3)
-        tasa_cb = cb.get("tasa_conciliacion", 0)
-        kpi_card("% Match Cobros", f"{tasa_cb}%", f"{cb.get('match_exacto', 0)} exactos", "success" if tasa_cb >= 90 else "warning" if tasa_cb >= 70 else "danger", c4)
-        kpi_card("Movimientos", f"{cb.get('total', 0)}", f"{cb.get('no_match', 0)} sin match", "neutral", c5)
+
+        # Fila protagonista — Contagram
+        monto_ventas_ctg = stats.get("monto_ventas_contagram", 0)
+        monto_exacto_cb = cb.get("match_exacto_monto", 0)
+        monto_ident_cb = monto_exacto_cb + cb.get("probable_duda_id_monto", 0)
+        cob_exacta_pct = (monto_exacto_cb / monto_ventas_ctg * 100) if monto_ventas_ctg > 0 else 0
+        cob_total_pct = (monto_ident_cb / monto_ventas_ctg * 100) if monto_ventas_ctg > 0 else 0
         n_facturas = len(df_det) if not df_det.empty else "N/D"
-        kpi_card("Facturas Ctg.", f"{n_facturas}", format_money(stats.get("monto_ventas_contagram", 0)), "neutral", c6)
+
+        c1, c2, c3 = st.columns(3)
+        kpi_card("Total Facturado Contagram", format_money(monto_ventas_ctg),
+                 f"{n_facturas} facturas", "neutral", c1)
+        kpi_card("Cobrado e Identificado", format_money(monto_ident_cb),
+                 f"de {format_money(monto_ventas_ctg)} facturado", "success", c2)
+        kpi_card("% Cobertura", f"{cob_total_pct:.1f}%",
+                 f"Exacto {cob_exacta_pct:.1f}% | Con probables {cob_total_pct:.1f}%",
+                 "success" if cob_total_pct >= 80 else "warning" if cob_total_pct >= 50 else "danger", c3)
+
+        # Fila contexto — Banco
+        st.caption("🏦 Movimientos bancarios del período")
+        c1, c2, c3 = st.columns(3)
+        kpi_card("Cobrado en Bancos", format_money(cb.get("monto_total", 0)),
+                 f"{cb.get('total', 0)} movimientos", "neutral", c1)
+        kpi_card("Match Exacto", f"{cb.get('match_exacto', 0)} mov.",
+                 f"({cb.get('match_directo', 0)} dir + {cb.get('match_suma', 0)} suma) — {format_money(monto_exacto_cb)}",
+                 "success", c2)
+        kpi_card("Sin Identificar", f"{cb.get('no_match', 0)} mov.",
+                 f"{format_money(cb.get('no_match_monto', 0))} — Revisar en Excepciones", "danger", c3)
 
         st.markdown("###")
 
         # ── BLOQUE PAGOS ──
         section_div("PAGOS (Egresos)", "🏭")
-        c1, c2, c3, c4, c5, c6 = st.columns(6)
-        kpi_card("Pagado en Bancos", format_money(pg.get("monto_total", 0)), f"{pg.get('total', 0)} pagos", "neutral", c1)
-        kpi_card("OCs Contagram", format_money(stats.get("monto_compras_contagram", 0)), "OC registradas", "neutral", c2)
-        gap_pagos = stats.get("payment_gap", 0)
-        kpi_card("Payment Gap", format_money(gap_pagos), "Dif. Banco vs Contagram", "success" if abs(gap_pagos) < 10000 else "danger", c3)
-        tasa_pg = pg.get("tasa_conciliacion", 0)
-        kpi_card("% Match Pagos", f"{tasa_pg}%", f"{pg.get('match_exacto', 0)} exactos", "success" if tasa_pg >= 90 else "warning" if tasa_pg >= 70 else "danger", c4)
-        kpi_card("Movimientos", f"{pg.get('total', 0)}", f"{pg.get('no_match', 0)} sin match", "neutral", c5)
+
+        # Fila protagonista — Contagram
+        monto_ocs_ctg = stats.get("monto_compras_contagram", 0)
+        monto_exacto_pg = pg.get("match_exacto_monto", 0)
+        monto_ident_pg = monto_exacto_pg + pg.get("probable_duda_id_monto", 0)
+        cob_pg_pct = (monto_ident_pg / monto_ocs_ctg * 100) if monto_ocs_ctg > 0 else 0
         n_ocs = stats.get("cant_compras_contagram", "N/D")
-        kpi_card("OCs Cargadas", f"{n_ocs}", format_money(stats.get("monto_compras_contagram", 0)), "neutral", c6)
+
+        c1, c2, c3 = st.columns(3)
+        kpi_card("Total OCs Contagram", format_money(monto_ocs_ctg),
+                 f"{n_ocs} OCs registradas", "neutral", c1)
+        kpi_card("Pagado e Identificado", format_money(monto_ident_pg),
+                 f"de {format_money(monto_ocs_ctg)} en OCs", "success", c2)
+        kpi_card("% Cobertura Pagos", f"{cob_pg_pct:.1f}%",
+                 "Del total de OCs registradas",
+                 "success" if cob_pg_pct >= 80 else "warning" if cob_pg_pct >= 50 else "danger", c3)
+
+        # Fila contexto — Banco
+        st.caption("🏦 Movimientos bancarios del período")
+        c1, c2, c3 = st.columns(3)
+        kpi_card("Pagado en Bancos", format_money(pg.get("monto_total", 0)),
+                 f"{pg.get('total', 0)} pagos", "neutral", c1)
+        kpi_card("Match Exacto Pagos", f"{pg.get('match_exacto', 0)} mov.",
+                 format_money(monto_exacto_pg), "success", c2)
+        kpi_card("Sin Identificar Pagos", f"{pg.get('no_match', 0)} mov.",
+                 f"{format_money(pg.get('no_match_monto', 0))} — Revisar en Excepciones", "danger", c3)
 
         st.markdown("###")
 
@@ -461,6 +495,15 @@ if data_ready:
             c3,
         )
         kpi_hero("🏛️", format_money(stats.get("monto_gastos_bancarios", 0)), "Gastos Bancarios", f"{stats.get('gastos_bancarios', 0)} movimientos", "neutral", c4)
+
+        # Revenue Gap real: Facturado - Identificado (exacto + probable)
+        revenue_gap_real = monto_ventas_ctg - monto_ident_cb
+        st.markdown("###")
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            color_gap = "success" if abs(revenue_gap_real) < 10000 else "warning" if abs(revenue_gap_real) < 50000 else "danger"
+            kpi_card("Revenue Gap", format_money(revenue_gap_real),
+                     "Facturado sin cobro identificado en banco", color_gap, c2)
 
         st.markdown("###")
 

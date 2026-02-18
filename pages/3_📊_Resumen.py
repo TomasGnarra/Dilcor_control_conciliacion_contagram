@@ -33,24 +33,48 @@ pg = stats.get("pagos_prov", {})
 
 
 # ═══════════════════════════════════════════════════════
-# KPIs GENERALES (fila superior)
+# KPIs GENERALES — Foco Contagram → Banco
 # ═══════════════════════════════════════════════════════
 pct_conc = float(stats.get("tasa_conciliacion_total", 0))
 n_exc = stats.get("no_match", 0)
+df_det = resultado.get("detalle_facturas", pd.DataFrame())
 
-c1, c2, c3, c4, c5 = st.columns(5)
-kpi_hero("📋", str(stats.get("total_movimientos", 0)), "Total Movimientos",
+# Fila 1 — Contagram (protagonista)
+monto_ventas = df_det["Total Venta"].sum() if not df_det.empty and "Total Venta" in df_det.columns else stats.get("monto_ventas_contagram", 0)
+monto_exacto = cb.get("match_exacto_monto", 0)
+monto_ident = monto_exacto + cb.get("probable_duda_id_monto", 0)
+cob_total_pct = (monto_ident / monto_ventas * 100) if monto_ventas > 0 else 0
+
+if not df_det.empty and "Estado Conciliacion" in df_det.columns:
+    n_conc = len(df_det[df_det["Estado Conciliacion"] == "Conciliada"])
+    n_total_f = len(df_det)
+else:
+    n_conc = 0
+    n_total_f = 0
+
+c1, c2, c3, c4 = st.columns(4)
+kpi_hero("📋", format_money(monto_ventas), "Total Facturado",
+         f"{n_total_f} facturas emitidas", "neutral", c1)
+kpi_hero("💰", format_money(monto_ident), "Cobrado Identificado",
+         f"Exacto {format_money(monto_exacto)} + probable",
+         "success" if cob_total_pct >= 80 else "warning", c2)
+kpi_hero("✅", f"{n_conc}", "Facturas Conciliadas",
+         f"de {n_total_f} ({(n_conc/n_total_f*100):.1f}%)" if n_total_f > 0 else "Sin datos",
+         "success" if n_total_f > 0 and n_conc / n_total_f >= 0.8 else "warning", c3)
+kpi_hero("🏦", f"{cob_total_pct:.1f}%", "% Cobertura Total",
+         f"{pct_conc}% conciliación global",
+         "success" if cob_total_pct >= 80 else "warning" if cob_total_pct >= 50 else "danger", c4)
+
+# Fila 2 — Banco (contexto)
+st.caption("🏦 Banco")
+c1, c2, c3 = st.columns(3)
+kpi_card("Total Movimientos Banco", str(stats.get("total_movimientos", 0)),
          f"Cobros: {cb.get('total', 0)} | Pagos: {pg.get('total', 0)}", "neutral", c1)
-kpi_hero("🏦", f"{pct_conc}%", "Conciliación Global",
-         f"{stats.get('match_exacto', 0)} exactos",
-         "success" if pct_conc >= 90 else "warning" if pct_conc >= 70 else "danger", c2)
-kpi_hero("💰", format_money(cb.get("monto_total", 0)), "Total Cobros",
-         f"{cb.get('total', 0)} movimientos", "neutral", c3)
-kpi_hero("🏭", format_money(pg.get("monto_total", 0)), "Total Pagos",
-         f"{pg.get('total', 0)} movimientos", "neutral", c4)
-kpi_hero("⚠️", str(n_exc), "Excepciones",
+kpi_card("Excepciones Pendientes", str(n_exc),
          format_money(stats.get("monto_no_conciliado", 0)),
-         "success" if n_exc == 0 else "danger", c5)
+         "success" if n_exc == 0 else "danger", c2)
+kpi_card("Gastos Bancarios", format_money(stats.get("monto_gastos_bancarios", 0)),
+         f"{stats.get('gastos_bancarios', 0)} movimientos", "neutral", c3)
 
 
 # ═══════════════════════════════════════════════════════

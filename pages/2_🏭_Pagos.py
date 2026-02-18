@@ -47,63 +47,88 @@ df_compras = st.session_state.get("datos_compras", pd.DataFrame())
 
 
 # ═══════════════════════════════════════════════════════
-# SECCION A — KPIs (3 FILAS)
+# SECCION A — KPIs (3 FILAS) — Foco Contagram → Banco
 # ═══════════════════════════════════════════════════════
 section_div("Panorama de Pagos", "📊")
 
-# --- FILA 1: Banco vs Contagram ---
-col_banco, col_sep, col_ctg = st.columns([5, 1, 5])
+# Cálculos compartidos
+monto_ocs = stats.get("monto_compras_contagram", 0)
+n_ocs = len(df_compras) if not df_compras.empty else (stats.get("cant_compras_contagram", 0))
+monto_conciliado_pg = pg.get("match_exacto_monto", 0)
+monto_pendiente_banco_pg = pg.get("monto_total", 0) - monto_conciliado_pg
+
+# OCs pendientes
+if "factura_match" in df_pagos.columns:
+    ocs_pagadas = set(df_pagos[df_pagos["factura_match"].notna()]["factura_match"].unique())
+else:
+    ocs_pagadas = set()
+col_id = None
+if not df_compras.empty:
+    col_id = "Nro OC" if "Nro OC" in df_compras.columns else "Nro Factura" if "Nro Factura" in df_compras.columns else None
+    if col_id:
+        pendientes_oc = df_compras[~df_compras[col_id].isin(ocs_pagadas)]
+        n_pend = len(pendientes_oc)
+        m_pend = pendientes_oc["Monto Total"].sum() if "Monto Total" in pendientes_oc.columns else 0
+    else:
+        n_pend = "N/D"
+        m_pend = 0
+else:
+    gap = stats.get("payment_gap", 0)
+    n_pend = "N/D"
+    m_pend = gap
+
+m_ocs_conciliado = monto_ocs - m_pend if isinstance(m_pend, (int, float)) else 0
+n_ocs_conc = (n_ocs - n_pend) if isinstance(n_pend, (int, float)) and isinstance(n_ocs, (int, float)) else 0
+cobertura_oc = (m_ocs_conciliado / monto_ocs * 100) if monto_ocs > 0 else 0
+
+# --- FILA 1: Contagram (protagonista) | Banco (contexto) ---
+col_ctg, col_sep, col_banco = st.columns([5, 1, 5])
+
+with col_ctg:
+    st.markdown("#### 📋 Contagram (Compras)")
+    c1, c2, c3 = st.columns(3)
+    kpi_card("Total en OCs", format_money(monto_ocs),
+             f"{n_ocs} OCs registradas", "neutral", c1)
+    kpi_card("OCs Pendientes", f"{n_pend}",
+             f"Monto: {format_money(m_pend)}", "warning", c2)
+    kpi_card("OCs Conciliadas", f"{n_ocs_conc}",
+             f"de {n_ocs} totales ({(n_ocs_conc/n_ocs*100):.1f}%)" if isinstance(n_ocs, (int, float)) and n_ocs > 0 else "Sin datos",
+             "success" if isinstance(n_ocs, (int, float)) and n_ocs > 0 and n_ocs_conc / n_ocs >= 0.8 else "warning", c3)
+
+with col_sep:
+    st.markdown("<div style='border-left: 2px solid #0D7C3D; height: 160px; margin: 20px auto; width: 0;'></div>", unsafe_allow_html=True)
 
 with col_banco:
     st.markdown("#### 🏦 Banco (Egresos)")
     c1, c2 = st.columns(2)
     kpi_card("Débitos Bancarios", format_money(pg.get("monto_total", 0)),
              f"{pg.get('total', 0)} movimientos", "neutral", c1)
-    
-    monto_conciliado = pg.get("match_exacto_monto", 0)
-    monto_pendiente = pg.get("monto_total", 0) - monto_conciliado
-    kpi_card("Conciliado $", format_money(monto_conciliado),
-             f"Pendiente: {format_money(monto_pendiente)}", "success", c2)
-
-with col_sep:
-    st.markdown("<div style='border-left: 2px solid #0D7C3D; height: 160px; margin: 20px auto; width: 0;'></div>", unsafe_allow_html=True)
-
-with col_ctg:
-    st.markdown("#### 📋 Contagram (Compras)")
-    c1, c2 = st.columns(2)
-    monto_ocs = stats.get("monto_compras_contagram", 0)
-    # Cantidad OCs: si df_compras existe, usar len, sino stats
-    n_ocs = len(df_compras) if not df_compras.empty else (stats.get("cant_compras_contagram", 0))
-    kpi_card("Total en OCs", format_money(monto_ocs),
-             f"{n_ocs} OCs registradas", "neutral", c1)
-
-    # OCs pendientes: aproximación
-    # Si tenemos df_compras y df_pagos, podemos ver cuantas OCs no tienen match
-    if "factura_match" in df_pagos.columns:
-        ocs_pagadas = set(df_pagos[df_pagos["factura_match"].notna()]["factura_match"].unique())
-    else:
-        ocs_pagadas = set()
-    col_id = None
-    if not df_compras.empty:
-        col_id = "Nro OC" if "Nro OC" in df_compras.columns else "Nro Factura" if "Nro Factura" in df_compras.columns else None
-        if col_id:
-            pendientes = df_compras[~df_compras[col_id].isin(ocs_pagadas)]
-            n_pend = len(pendientes)
-            m_pend = pendientes["Monto Total"].sum() if "Monto Total" in pendientes.columns else 0
-        else:
-            n_pend = "N/D"
-            m_pend = 0
-    else:
-        gap = stats.get("payment_gap", 0)
-        n_pend = "N/D"
-        m_pend = gap  # Aprox
-
-    kpi_card("OCs Pendientes", f"{n_pend}",
-             f"Monto: {format_money(m_pend)}", "warning", c2)
+    kpi_card("Conciliado $", format_money(monto_conciliado_pg),
+             f"Pendiente: {format_money(monto_pendiente_banco_pg)}", "success", c2)
 
 
-# --- FILA 2: Desglose por nivel ---
+# --- FILA 2: Métricas Contagram ---
 st.markdown("###")
+st.markdown("#### 📋 Contagram")
+c1, c2, c3, c4 = st.columns(4)
+
+kpi_card("Monto OCs Conciliado $", format_money(m_ocs_conciliado),
+         "Pagos confirmados", "success", c1)
+
+oc_prom = monto_ocs / n_ocs if isinstance(n_ocs, (int, float)) and n_ocs > 0 else 0
+kpi_card("OC Promedio", format_money(oc_prom),
+         f"{n_ocs} OCs", "neutral", c2)
+
+color_cob = "success" if cobertura_oc >= 80 else "warning" if cobertura_oc >= 50 else "danger"
+kpi_card("% Cobertura OCs", f"{cobertura_oc:.1f}%",
+         "Del total de OCs registradas", color_cob, c3)
+# c4 libre — se puede agregar metric futura
+c4.empty()
+
+
+# --- FILA 3: Banco — Desglose por nivel de match ---
+st.markdown("###")
+st.markdown("#### 🏦 Banco — Desglose por nivel de match")
 c1, c2, c3, c4 = st.columns(4)
 kpi_card("Match Exacto", f"{pg.get('match_exacto', 0)} mov.",
          f"({pg.get('match_directo', 0)} dir + {pg.get('match_suma', 0)} suma)",
@@ -116,39 +141,20 @@ kpi_card("Sin Identificar", f"{pg.get('no_match', 0)} mov.",
          format_money(pg.get("no_match_monto", 0)), "danger", c4)
 
 
-# --- FILA 3: Métricas Contagram ---
-st.markdown("###")
-c1, c2, c3 = st.columns(3)
-
-# Monto OCs Conciliado
-m_ocs_conciliado = monto_ocs - m_pend if isinstance(m_pend, (int, float)) else 0
-kpi_card("Monto OCs Conciliado $", format_money(m_ocs_conciliado),
-         "Pagos confirmados", "success", c1)
-
-# OC Promedio
-oc_prom = monto_ocs / n_ocs if isinstance(n_ocs, (int, float)) and n_ocs > 0 else 0
-kpi_card("OC Promedio", format_money(oc_prom),
-         f"{n_ocs} OCs", "neutral", c2)
-
-# % Cobertura
-cobertura = (m_ocs_conciliado / monto_ocs * 100) if monto_ocs > 0 else 0
-color_cob = "success" if cobertura >= 80 else "warning" if cobertura >= 50 else "danger"
-kpi_card("% Cobertura OCs", f"{cobertura:.1f}%",
-         "Del total de OCs registradas", color_cob, c3)
-
-
 # ═══════════════════════════════════════════════════════
 # SECCION B — ALERTAS PRIORITARIAS
 # ═══════════════════════════════════════════════════════
 st.markdown("###")
 section_div("Alertas Prioritarias", "🚨")
 
+# Columna de proveedor (definida aquí para reusar en Sección C)
+prov_col = "Proveedor" if (not df_compras.empty and "Proveedor" in df_compras.columns) else "Cliente"
+
 # ── ALERTA 1: Top Proveedores con OCs Sin Match ──
 # Proveedores con OCs pero sin pagos
 if not df_compras.empty and col_id:
     # df_compras tiene proveedor, monto, fecha?
     # Agrupar compras por Proveedor
-    prov_col = "Proveedor" if "Proveedor" in df_compras.columns else "Cliente" # fallback
     if prov_col in df_compras.columns:
         compras_pend = df_compras[~df_compras[col_id].isin(ocs_pagadas)]
         
@@ -262,41 +268,159 @@ if "diferencia_monto" in df_pagos.columns:
 
 
 # ═══════════════════════════════════════════════════════
-# SECCION C — TABLA
+# SECCION C — TABLA (doble tab: Contagram → Banco)
 # ═══════════════════════════════════════════════════════
 st.markdown("###")
 section_div("Detalle de Pagos", "📄")
 
+# Tabs: OCs Contagram como default, Banco como secundaria
+tab_ctg_p, tab_banco_p = st.tabs(["📋 OCs Contagram", "🏦 Movimientos Banco"])
+
+# ── Tab 1: OCs Contagram ──
+with tab_ctg_p:
+    st.info("ℹ️ **Detalle de OCs con estado de conciliación pendiente de implementar en motor.** "
+            "Se muestran los datos crudos de compras/OCs cargados desde Contagram.")
+
+    if not df_compras.empty:
+        # Filtros básicos
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if prov_col in df_compras.columns:
+                provs = sorted(df_compras[prov_col].dropna().unique())
+                prov_sel = st.multiselect("Proveedor", provs, key="oc_prov")
+            else:
+                prov_sel = []
+        with c2:
+            if "Fecha" in df_compras.columns:
+                try:
+                    _fechas_p = pd.to_datetime(df_compras["Fecha"], errors="coerce")
+                    _min_fp = _fechas_p.dropna().min()
+                    _max_fp = _fechas_p.dropna().max()
+                    if pd.notna(_min_fp) and pd.notna(_max_fp) and _min_fp < _max_fp:
+                        rango_fecha_oc = st.date_input(
+                            "Rango Fecha OC",
+                            value=(_min_fp.date(), _max_fp.date()),
+                            min_value=_min_fp.date(),
+                            max_value=_max_fp.date(),
+                            key="oc_fecha_rango",
+                        )
+                    else:
+                        rango_fecha_oc = None
+                except Exception:
+                    rango_fecha_oc = None
+            else:
+                rango_fecha_oc = None
+        with c3:
+            search_oc = st.text_input("Buscar proveedor / nro OC", key="oc_search")
+
+        df_oc_show = df_compras.copy()
+        if prov_sel and prov_col in df_oc_show.columns:
+            df_oc_show = df_oc_show[df_oc_show[prov_col].isin(prov_sel)]
+        if rango_fecha_oc and isinstance(rango_fecha_oc, tuple) and len(rango_fecha_oc) == 2:
+            try:
+                _fp_oc = pd.to_datetime(df_oc_show["Fecha"], errors="coerce")
+                df_oc_show = df_oc_show[
+                    (_fp_oc >= pd.Timestamp(rango_fecha_oc[0])) & (_fp_oc <= pd.Timestamp(rango_fecha_oc[1]))
+                ]
+            except Exception:
+                pass
+        if search_oc:
+            mask = df_oc_show.astype(str).apply(
+                lambda x: x.str.contains(search_oc, case=False, na=False)
+            ).any(axis=1)
+            df_oc_show = df_oc_show[mask]
+
+        # Formatear montos
+        df_oc_disp = df_oc_show.copy()
+        for mc in ["Monto Total", "monto"]:
+            if mc in df_oc_disp.columns:
+                df_oc_disp[mc] = df_oc_disp[mc].apply(
+                    lambda x: f"$ {x:,.0f}" if pd.notnull(x) and isinstance(x, (int, float)) else x
+                )
+
+        st.dataframe(df_oc_disp.reset_index(drop=True), use_container_width=True, hide_index=True)
+
+        # Totales
+        total_ocs_vis = df_oc_show["Monto Total"].sum() if "Monto Total" in df_oc_show.columns else 0
+        st.markdown(f"**Total OCs visible: {format_money(total_ocs_vis)} — {len(df_oc_show)} OCs**")
+    else:
+        st.warning("Sin datos de compras/OCs de Contagram.")
+
+# ── Tab 2: Movimientos Banco (tabla original) ──
+with tab_banco_p:
+    if not df_pagos.empty:
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            banco_sel_p = st.multiselect("Banco", df_pagos["banco"].unique(), key="banco_sel_pag")
+        with c2:
+            niveles_p = df_pagos[match_col].astype(str).unique()
+            nivel_sel_p = st.multiselect("Nivel Match", niveles_p, key="nivel_sel_pag")
+        with c3:
+            pass
+        with c4:
+            search_p = st.text_input("Buscar proveedor/importe", key="search_pag")
+
+        df_show_p = df_pagos.copy()
+        if banco_sel_p:
+            df_show_p = df_show_p[df_show_p["banco"].isin(banco_sel_p)]
+        if nivel_sel_p:
+            df_show_p = df_show_p[df_show_p[match_col].astype(str).isin(nivel_sel_p)]
+        if search_p:
+            df_show_p = df_show_p[df_show_p.astype(str).apply(
+                lambda x: x.str.contains(search_p, case=False, na=False)
+            ).any(axis=1)]
+
+        cols = ["fecha", "banco", "descripcion", "nombre_contagram", "monto", "monto_factura", "diferencia_monto", match_col]
+        cols = [c for c in cols if c in df_show_p.columns]
+
+        df_disp = df_show_p[cols].copy()
+        num_cols = ["monto", "monto_factura", "diferencia_monto"]
+        for c in num_cols:
+            if c in df_disp.columns:
+                df_disp[c] = df_disp[c].apply(
+                    lambda x: f"$ {x:,.0f}" if pd.notnull(x) and isinstance(x, (int, float)) else x
+                )
+
+        st.dataframe(df_disp, use_container_width=True, hide_index=True)
+        st.markdown(f"**Total visible: {format_money(df_show_p['monto'].sum())}**")
+    else:
+        st.info("Sin movimientos bancarios de tipo débito.")
+
+
+# ═══════════════════════════════════════════════════════
+# SECCION D — Excepciones Banco (débitos sin identificar)
+# ═══════════════════════════════════════════════════════
 if not df_pagos.empty:
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        banco_sel_p = st.multiselect("Banco", df_pagos["banco"].unique())
-    with c2:
-        niveles_p = df_pagos[match_col].astype(str).unique()
-        nivel_sel_p = st.multiselect("Nivel Match", niveles_p)
-    with c3:
-        pass
-    with c4:
-        search_p = st.text_input("Buscar proveedor/importe")
+    # Filtrar débitos no_match / EXCLUDED
+    _exc_mask_p = pd.Series(False, index=df_pagos.index)
+    if "conciliation_status" in df_pagos.columns:
+        _exc_mask_p = _exc_mask_p | (df_pagos["conciliation_status"] == "EXCLUDED")
+    if match_col in df_pagos.columns:
+        _exc_mask_p = _exc_mask_p | (df_pagos[match_col] == "no_match")
 
-    df_show_p = df_pagos.copy()
-    if banco_sel_p: df_show_p = df_show_p[df_show_p["banco"].isin(banco_sel_p)]
-    if nivel_sel_p: df_show_p = df_show_p[df_show_p[match_col].astype(str).isin(nivel_sel_p)]
-    if search_p:
-        df_show_p = df_show_p[df_show_p.astype(str).apply(lambda x: x.str.contains(search_p, case=False, na=False)).any(axis=1)]
+    df_exc_pagos = df_pagos[_exc_mask_p].copy()
 
-    cols = ["fecha", "banco", "descripcion", "nombre_contagram", "monto", "monto_factura", "diferencia_monto", match_col]
-    cols = [c for c in cols if c in df_show_p.columns]
-    
-    # Formatear
-    df_disp = df_show_p[cols].copy()
-    num_cols = ["monto", "monto_factura", "diferencia_monto"]
-    for c in num_cols:
-        if c in df_disp.columns:
-            df_disp[c] = df_disp[c].apply(lambda x: f"$ {x:,.0f}" if pd.notnull(x) and isinstance(x, (int, float)) else x)
+    if not df_exc_pagos.empty:
+        n_exc_p = len(df_exc_pagos)
+        monto_exc_p = df_exc_pagos["monto"].sum()
 
-    st.dataframe(
-        df_disp, 
-        use_container_width=True, hide_index=True
-    )
-    st.markdown(f"**Total visible: {format_money(df_show_p['monto'].sum())}**")
+        with st.expander(
+            f"🔴 Débitos Bancarios Sin Identificar — {n_exc_p} movimientos | {format_money(monto_exc_p)}",
+            expanded=False,
+        ):
+            exc_cols_p = ["fecha", "banco", "descripcion", "cuit_banco", "nombre_contagram", "monto", "conciliation_tag", "match_detalle"]
+            exc_cols_p = [c for c in exc_cols_p if c in df_exc_pagos.columns]
+
+            df_exc_disp_p = df_exc_pagos[exc_cols_p].copy()
+            if "monto" in df_exc_disp_p.columns:
+                df_exc_disp_p["monto"] = df_exc_disp_p["monto"].apply(
+                    lambda x: f"$ {x:,.0f}" if pd.notnull(x) and isinstance(x, (int, float)) else x
+                )
+
+            st.dataframe(df_exc_disp_p.reset_index(drop=True), use_container_width=True, hide_index=True)
+
+            st.info(
+                "💡 Estos movimientos pueden ser pagos a proveedores no registrados en Contagram, "
+                "transferencias internas, o pagos de períodos anteriores. Revisarlos en "
+                "Excepciones para agregar alias a la tabla paramétrica."
+            )
