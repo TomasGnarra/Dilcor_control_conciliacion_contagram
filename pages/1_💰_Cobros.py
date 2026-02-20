@@ -53,7 +53,7 @@ section_div("Panorama de Cobros", "📊")
 
 # Cálculos compartidos (usados en varias filas)
 monto_ventas = stats.get("monto_ventas_contagram", 0)
-n_facturas = len(df_ventas) if not df_ventas.empty else 0
+n_facturas = len(df_det) if not df_det.empty else (len(df_ventas) if not df_ventas.empty else 0)
 monto_exacto = cb.get("match_exacto_monto", 0)
 monto_identificado = monto_exacto + cb.get("probable_duda_id_monto", 0)
 monto_conciliado = cb.get("match_exacto_monto", 0)
@@ -478,3 +478,6 @@ if not df_cobros.empty:
                 "transferencias internas, o pagos de períodos anteriores. Revisarlos en "
                 "Excepciones para agregar alias a la tabla paramétrica."
             )
+
+from src.chatbot import render_chatbot_flotante
+render_chatbot_flotante()

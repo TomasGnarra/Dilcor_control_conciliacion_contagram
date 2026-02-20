@@ -424,3 +424,6 @@ if not df_pagos.empty:
                 "transferencias internas, o pagos de períodos anteriores. Revisarlos en "
                 "Excepciones para agregar alias a la tabla paramétrica."
             )
+
+from src.chatbot import render_chatbot_flotante
+render_chatbot_flotante()
