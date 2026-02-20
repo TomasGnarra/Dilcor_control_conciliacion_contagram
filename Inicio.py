@@ -13,6 +13,7 @@ from src.ui.components import (
     section_div, format_pct, donut_chart, horizontal_bar_chart,
     stacked_bar_chart, no_data_warning,
 )
+from src.chatbot import render_chatbot_flotante
 
 # --- Configuracion de pagina ---
 st.set_page_config(
@@ -281,11 +282,9 @@ def load_manual_data():
                 
                 default_sel = tipos_disp
                 if filtro_rapido == "Solo Ventas/Cobros":
-                    # Keywords de ventas (excluyendo pagos explícitos)
                     kw_ventas = ["factura", "recibo", "nota de debito", "nd", "fce", "ticket", "cobro"]
                     default_sel = [t for t in tipos_disp if any(k in t.lower() for k in kw_ventas) and "orden de pago" not in t.lower()]
                 elif filtro_rapido == "Solo Pagos":
-                    # Keywords de pagos
                     kw_pagos = ["orden de pago", "op", "pago", "fondo fijo", "gasto"]
                     default_sel = [t for t in tipos_disp if any(k in t.lower() for k in kw_pagos)]
                 
@@ -307,7 +306,6 @@ def load_manual_data():
             col_medio = _detectar_columna_medio(ventas)
 
             if col_medio is not None:
-                # Ordenar medios de pago por frecuencia (mayor a menor)
                 _conteos = ventas[col_medio].dropna().astype(str).value_counts()
                 medios_unicos = [m for m in _conteos.index if m.strip()]
 
@@ -408,7 +406,6 @@ if data_ready:
         # ── BLOQUE COBROS ──
         section_div("COBROS (Ingresos)", "💰")
 
-        # Fila protagonista — Contagram
         monto_ventas_ctg = stats.get("monto_ventas_contagram", 0)
         monto_exacto_cb = cb.get("match_exacto_monto", 0)
         monto_ident_cb = monto_exacto_cb + cb.get("probable_duda_id_monto", 0)
@@ -416,16 +413,23 @@ if data_ready:
         cob_total_pct = (monto_ident_cb / monto_ventas_ctg * 100) if monto_ventas_ctg > 0 else 0
         n_facturas = len(df_det) if not df_det.empty else "N/D"
 
-        c1, c2, c3 = st.columns(3)
+        if not df_det.empty and "Estado Conciliacion" in df_det.columns:
+            n_conc = len(df_det[df_det["Estado Conciliacion"] == "Conciliada"])
+        else:
+            n_conc = 0
+
+        monto_probable_cb = cb.get("probable_duda_id_monto", 0)
+        c1, c2, c3, c4 = st.columns(4)
         kpi_card("Total Facturado Contagram", format_money(monto_ventas_ctg),
                  f"{n_facturas} facturas", "neutral", c1)
-        kpi_card("Cobrado e Identificado", format_money(monto_ident_cb),
-                 f"de {format_money(monto_ventas_ctg)} facturado", "success", c2)
-        kpi_card("% Cobertura", f"{cob_total_pct:.1f}%",
-                 f"Exacto {cob_exacta_pct:.1f}% | Con probables {cob_total_pct:.1f}%",
-                 "success" if cob_total_pct >= 80 else "warning" if cob_total_pct >= 50 else "danger", c3)
+        kpi_card("Cobrado Exacto", format_money(monto_exacto_cb),
+                 f"+ {format_money(monto_probable_cb)} probables a verificar", "success", c2)
+        kpi_card("Facturas Conciliadas", f"{n_conc}",
+                 f"de {n_facturas} totales" if isinstance(n_facturas, int) else "Sin datos", "success", c3)
+        kpi_card("% Cobertura Exacta", f"{cob_exacta_pct:.1f}%",
+                 f"Sube a {cob_total_pct:.1f}% con probables",
+                 "success" if cob_exacta_pct >= 80 else "warning" if cob_exacta_pct >= 50 else "danger", c4)
 
-        # Fila contexto — Banco
         st.caption("🏦 Movimientos bancarios del período")
         c1, c2, c3 = st.columns(3)
         kpi_card("Cobrado en Bancos", format_money(cb.get("monto_total", 0)),
@@ -441,23 +445,23 @@ if data_ready:
         # ── BLOQUE PAGOS ──
         section_div("PAGOS (Egresos)", "🏭")
 
-        # Fila protagonista — Contagram
         monto_ocs_ctg = stats.get("monto_compras_contagram", 0)
         monto_exacto_pg = pg.get("match_exacto_monto", 0)
-        monto_ident_pg = monto_exacto_pg + pg.get("probable_duda_id_monto", 0)
+        monto_probable_pg = pg.get("probable_duda_id_monto", 0)
+        monto_ident_pg = monto_exacto_pg + monto_probable_pg
+        cob_exacta_pg_pct = (monto_exacto_pg / monto_ocs_ctg * 100) if monto_ocs_ctg > 0 else 0
         cob_pg_pct = (monto_ident_pg / monto_ocs_ctg * 100) if monto_ocs_ctg > 0 else 0
         n_ocs = stats.get("cant_compras_contagram", "N/D")
 
         c1, c2, c3 = st.columns(3)
         kpi_card("Total OCs Contagram", format_money(monto_ocs_ctg),
                  f"{n_ocs} OCs registradas", "neutral", c1)
-        kpi_card("Pagado e Identificado", format_money(monto_ident_pg),
-                 f"de {format_money(monto_ocs_ctg)} en OCs", "success", c2)
-        kpi_card("% Cobertura Pagos", f"{cob_pg_pct:.1f}%",
-                 "Del total de OCs registradas",
-                 "success" if cob_pg_pct >= 80 else "warning" if cob_pg_pct >= 50 else "danger", c3)
+        kpi_card("Pagado Exacto", format_money(monto_exacto_pg),
+                 f"+ {format_money(monto_probable_pg)} probables a verificar", "success", c2)
+        kpi_card("% Cobertura Exacta", f"{cob_exacta_pg_pct:.1f}%",
+                 f"Sube a {cob_pg_pct:.1f}% con probables",
+                 "success" if cob_exacta_pg_pct >= 80 else "warning" if cob_exacta_pg_pct >= 50 else "danger", c3)
 
-        # Fila contexto — Banco
         st.caption("🏦 Movimientos bancarios del período")
         c1, c2, c3 = st.columns(3)
         kpi_card("Pagado en Bancos", format_money(pg.get("monto_total", 0)),
@@ -487,7 +491,6 @@ if data_ready:
         )
         kpi_hero("🏛️", format_money(stats.get("monto_gastos_bancarios", 0)), "Gastos Bancarios", f"{stats.get('gastos_bancarios', 0)} movimientos", "neutral", c4)
 
-        # Revenue Gap real: Facturado - Identificado (exacto + probable)
         revenue_gap_real = monto_ventas_ctg - monto_ident_cb
         st.markdown("###")
         c1, c2, c3 = st.columns([1, 2, 1])
@@ -498,7 +501,6 @@ if data_ready:
 
         st.markdown("###")
 
-        # Graficos resumen
         col_g1, col_g2 = st.columns(2)
         with col_g1:
             labels = ["Match Exacto", "Duda de ID", "Dif. Cambio", "Sin Match", "Gastos"]
@@ -536,45 +538,6 @@ else:
 
 
 # ═══════════════════════════════════════════════════════
-# ASISTENTE DE CONCILIACION (Gemini Chat)
+# ASISTENTE FINANCIERO (Groq + Llama 3.3 70B)
 # ═══════════════════════════════════════════════════════
-for msg in st.session_state.get("chat_history", []):
-    role = "user" if msg["role"] == "user" else "assistant"
-    with st.chat_message(role):
-        st.markdown(msg["parts"][0]["text"])
-
-if prompt := st.chat_input("Preguntale al asistente sobre la conciliacion..."):
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
-    st.session_state["chat_history"].append(
-        {"role": "user", "parts": [{"text": prompt}]}
-    )
-
-    _gkey = None
-    try:
-        _gkey = st.secrets["google"]["api_key"]
-    except Exception:
-        _gkey = os.environ.get("GOOGLE_API_KEY")
-
-    if _gkey and "stats" in st.session_state:
-        try:
-            from src.chatbot import crear_cliente, chat_responder
-            if "gemini_client" not in st.session_state:
-                st.session_state["gemini_client"] = crear_cliente(_gkey)
-            _resp = chat_responder(
-                st.session_state["gemini_client"],
-                st.session_state["stats"],
-                st.session_state["chat_history"][:-1],
-                prompt,
-            )
-        except Exception as e:
-            _resp = f"Error al consultar el asistente: {e}"
-    elif not _gkey:
-        _resp = "Configura tu API key de Google Gemini en `.streamlit/secrets.toml` para habilitar el asistente."
-    else:
-        _resp = "Ejecuta la conciliacion primero para que pueda responder preguntas sobre los resultados."
-
-    st.session_state["chat_history"].append(
-        {"role": "model", "parts": [{"text": _resp}]}
-    )
-    st.rerun()
+render_chatbot_flotante()

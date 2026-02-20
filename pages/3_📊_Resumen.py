@@ -55,15 +55,18 @@ else:
 c1, c2, c3, c4 = st.columns(4)
 kpi_hero("📋", format_money(monto_ventas), "Total Facturado",
          f"{n_total_f} facturas emitidas", "neutral", c1)
-kpi_hero("💰", format_money(monto_ident), "Cobrado Identificado",
-         f"Exacto {format_money(monto_exacto)} + probable",
-         "success" if cob_total_pct >= 80 else "warning", c2)
+cob_exacta_pct = (monto_exacto / monto_ventas * 100) if monto_ventas > 0 else 0
+monto_probable = monto_ident - monto_exacto
+
+kpi_hero("💰", format_money(monto_exacto), "Cobro Exacto",
+         f"+ {format_money(monto_probable)} probables a verificar",
+         "success", c2)
 kpi_hero("✅", f"{n_conc}", "Facturas Conciliadas",
          f"{(n_conc/n_total_f*100):.1f}% por cantidad — de {n_total_f} totales" if n_total_f > 0 else "Sin datos",
          "success" if n_total_f > 0 and n_conc / n_total_f >= 0.8 else "warning", c3)
-kpi_hero("🏦", f"{cob_total_pct:.1f}%", "% Cobertura del Monto",
-         f"{format_money(monto_ident)} de {format_money(monto_ventas)} facturado",
-         "success" if cob_total_pct >= 80 else "warning" if cob_total_pct >= 50 else "danger", c4)
+kpi_hero("🏦", f"{cob_exacta_pct:.1f}%", "% Cobertura Exacta",
+         f"Sube a {cob_total_pct:.1f}% con probables",
+         "success" if cob_exacta_pct >= 80 else "warning" if cob_exacta_pct >= 50 else "danger", c4)
 
 # Nota: explicar diferencia count vs monto
 if n_total_f > 0 and monto_ventas > 0:
@@ -201,3 +204,6 @@ with tab_por_banco:
             c3.metric("Dif. Cambio", data.get("probable_dif_cambio", 0))
             c4.metric("Sin Match", data.get("no_match", 0))
             st.caption(f"Créditos: {format_money(data.get('monto_creditos', 0))} | Débitos: {format_money(data.get('monto_debitos', 0))}")
+
+from src.chatbot import render_chatbot_flotante
+render_chatbot_flotante()
