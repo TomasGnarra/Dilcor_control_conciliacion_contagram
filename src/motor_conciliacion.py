@@ -363,7 +363,7 @@ class MotorConciliacion:
         return pd.DataFrame({
             "Estado Conciliacion": ventas["estado_conciliacion"],
             "ID": ventas.get("ID Cliente", ""),
-            "Fecha Emision": ventas["fecha_emision"].dt.strftime("%d/%m/%Y") if hasattr(ventas["fecha_emision"], "dt") else ventas["fecha_emision"],
+            "Fecha Emision": ventas["fecha_emision"].dt.strftime("%d/%m/%Y") if "fecha_emision" in ventas.columns and hasattr(ventas["fecha_emision"], "dt") else ventas.get("fecha_emision", ""),
             "Cliente": ventas.get("Nombre", ""),
             "CUIT": ventas.get("CUIT", ""),
             "Nro Factura": ventas.get("Nro Factura", ""),

@@ -250,3 +250,6 @@ st.markdown("""
 
 > **Tip:** Cada alias que agregues a la tabla paramétrica reduce las excepciones en futuras conciliaciones. Con el tiempo, el sistema se vuelve cada vez más preciso.
 """)
+
+from src.chatbot import render_chatbot_flotante
+render_chatbot_flotante()

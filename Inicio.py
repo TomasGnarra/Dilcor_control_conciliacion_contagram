@@ -13,6 +13,7 @@ from src.ui.components import (
     section_div, format_pct, donut_chart, horizontal_bar_chart,
     stacked_bar_chart, no_data_warning,
 )
+from src.chatbot import render_chatbot_flotante
 
 # --- Configuracion de pagina ---
 st.set_page_config(
@@ -52,66 +53,57 @@ with st.sidebar:
     st.markdown("**Bancos soportados**")
     st.caption("Banco Galicia | Banco Santander | Mercado Pago")
 
-    # --- Umbrales configurables ---
+    # --- Precision del Matching ---
     st.markdown("---")
-    with st.expander("Ajustar umbrales de matching"):
-        niveles_umbral = {
-            1: {
-                "etiqueta": "Muy estricto",
-                "tol_exacto_pct": 0.2, "tol_probable_pct": 0.5,
-                "tol_probable_abs": 250, "umbral_id_exacto_pct": 92,
-                "umbral_id_probable_pct": 70,
-                "descripcion": "Maxima exactitud: menos falsos positivos, pero mas casos pendientes.",
-            },
-            2: {
-                "etiqueta": "Estricto",
-                "tol_exacto_pct": 0.3, "tol_probable_pct": 0.8,
-                "tol_probable_abs": 300, "umbral_id_exacto_pct": 88,
-                "umbral_id_probable_pct": 65,
-                "descripcion": "Conservador: exige bastante similitud y tolera poca diferencia de monto.",
-            },
-            3: {
-                "etiqueta": "Balanceado (recomendado)",
-                "tol_exacto_pct": 0.5, "tol_probable_pct": 1.0,
-                "tol_probable_abs": 500, "umbral_id_exacto_pct": 80,
-                "umbral_id_probable_pct": 55,
-                "descripcion": "Equilibrio entre precision y cobertura para operacion diaria.",
-            },
-            4: {
-                "etiqueta": "Flexible",
-                "tol_exacto_pct": 0.8, "tol_probable_pct": 1.5,
-                "tol_probable_abs": 800, "umbral_id_exacto_pct": 77,
-                "umbral_id_probable_pct": 50,
-                "descripcion": "Acepta mas variaciones: reduce pendientes, pero requiere revision.",
-            },
-            5: {
-                "etiqueta": "Muy flexible",
-                "tol_exacto_pct": 1.0, "tol_probable_pct": 2.0,
-                "tol_probable_abs": 1000, "umbral_id_exacto_pct": 75,
-                "umbral_id_probable_pct": 45,
-                "descripcion": "Maxima cobertura: mas coincidencias con mayor control manual.",
-            },
-        }
+    st.markdown("##### Precision del Matching")
 
-        nivel_umbral = st.slider(
-            "Filtro deslizante de umbral", min_value=1, max_value=5, value=3, step=1,
-            help="Izquierda: mas estricto. Derecha: mas flexible.",
-        )
-        cfg_umbral = niveles_umbral[nivel_umbral]
+    _niveles = {
+        "Muy estricto": {
+            "tol_exacto_pct": 0.2, "tol_probable_pct": 0.5, "tol_probable_abs": 250,
+            "umbral_id_exacto_pct": 92, "umbral_id_probable_pct": 70,
+            "desc": "Maxima exactitud, menos falsos positivos.",
+        },
+        "Estricto": {
+            "tol_exacto_pct": 0.3, "tol_probable_pct": 0.8, "tol_probable_abs": 300,
+            "umbral_id_exacto_pct": 88, "umbral_id_probable_pct": 65,
+            "desc": "Conservador, tolera poca diferencia de monto.",
+        },
+        "Balanceado (recomendado)": {
+            "tol_exacto_pct": 0.5, "tol_probable_pct": 1.0, "tol_probable_abs": 500,
+            "umbral_id_exacto_pct": 80, "umbral_id_probable_pct": 55,
+            "desc": "Equilibrio entre precision y cobertura.",
+        },
+        "Flexible": {
+            "tol_exacto_pct": 0.8, "tol_probable_pct": 1.5, "tol_probable_abs": 800,
+            "umbral_id_exacto_pct": 77, "umbral_id_probable_pct": 50,
+            "desc": "Mas cobertura, acepta mas variaciones.",
+        },
+        "Muy flexible": {
+            "tol_exacto_pct": 1.0, "tol_probable_pct": 2.0, "tol_probable_abs": 1000,
+            "umbral_id_exacto_pct": 75, "umbral_id_probable_pct": 45,
+            "desc": "Maxima cobertura, requiere revision manual.",
+        },
+    }
 
-        st.caption("1 = Muy estricto · 3 = Balanceado · 5 = Muy flexible")
+    _nivel_sel = st.selectbox(
+        "Nivel de tolerancia",
+        list(_niveles.keys()),
+        index=2,
+        help="Controla que tan estricto es el cruce entre banco y Contagram.",
+    )
+    cfg_umbral = _niveles[_nivel_sel]
 
-        st.markdown('<div class="threshold-panel">', unsafe_allow_html=True)
-        st.markdown(f'<div class="threshold-title">Nivel actual: {cfg_umbral["etiqueta"]}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="threshold-help">{cfg_umbral["descripcion"]}</div>', unsafe_allow_html=True)
-        st.caption("Si lo moves a la izquierda: menos matches y mas precision. A la derecha: mas matches y mas revision manual.")
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="threshold-panel">'
+        f'<div class="threshold-help">{cfg_umbral["desc"]}</div>'
+        f'</div>', unsafe_allow_html=True,
+    )
 
-        tol_exacto = cfg_umbral["tol_exacto_pct"] / 100
-        tol_probable_pct = cfg_umbral["tol_probable_pct"] / 100
-        tol_probable_abs = cfg_umbral["tol_probable_abs"]
-        umbral_id_exacto = cfg_umbral["umbral_id_exacto_pct"] / 100
-        umbral_id_probable = cfg_umbral["umbral_id_probable_pct"] / 100
+    tol_exacto = cfg_umbral["tol_exacto_pct"] / 100
+    tol_probable_pct = cfg_umbral["tol_probable_pct"] / 100
+    tol_probable_abs = cfg_umbral["tol_probable_abs"]
+    umbral_id_exacto = cfg_umbral["umbral_id_exacto_pct"] / 100
+    umbral_id_probable = cfg_umbral["umbral_id_probable_pct"] / 100
 
     match_config_override = {
         "tolerancia_monto_exacto_pct": tol_exacto,
@@ -290,11 +282,9 @@ def load_manual_data():
                 
                 default_sel = tipos_disp
                 if filtro_rapido == "Solo Ventas/Cobros":
-                    # Keywords de ventas (excluyendo pagos explícitos)
                     kw_ventas = ["factura", "recibo", "nota de debito", "nd", "fce", "ticket", "cobro"]
                     default_sel = [t for t in tipos_disp if any(k in t.lower() for k in kw_ventas) and "orden de pago" not in t.lower()]
                 elif filtro_rapido == "Solo Pagos":
-                    # Keywords de pagos
                     kw_pagos = ["orden de pago", "op", "pago", "fondo fijo", "gasto"]
                     default_sel = [t for t in tipos_disp if any(k in t.lower() for k in kw_pagos)]
                 
@@ -316,7 +306,6 @@ def load_manual_data():
             col_medio = _detectar_columna_medio(ventas)
 
             if col_medio is not None:
-                # Ordenar medios de pago por frecuencia (mayor a menor)
                 _conteos = ventas[col_medio].dropna().astype(str).value_counts()
                 medios_unicos = [m for m in _conteos.index if m.strip()]
 
@@ -394,15 +383,19 @@ if data_ready:
             st.session_state["resultado"] = resultado
             st.session_state["stats"] = motor.stats
             st.session_state["modo_real"] = modo_real
+            st.session_state["datos_ventas"] = ventas
+            st.session_state["datos_compras"] = compras
         st.success("✅ Conciliación completada.")
 
     # ═══════════════════════════════════════════════════════
-    # DASHBOARD PRINCIPAL (INICIO)
+    # DASHBOARD EJECUTIVO (INICIO)
     # ═══════════════════════════════════════════════════════
     if "resultado" in st.session_state:
         st.markdown("---")
         resultado = st.session_state["resultado"]
         stats = st.session_state["stats"]
+        cb = stats.get("cobros", {})
+        pg = stats.get("pagos_prov", {})
         df_det = resultado.get("detalle_facturas", pd.DataFrame())
 
         # SEMAFORO
@@ -410,49 +403,106 @@ if data_ready:
         n_exc = stats.get("no_match", 0)
         status_semaphore(pct_conc, n_exc)
 
-        # 4 KPIs HERO (Banco + Contagram + Gap)
+        # ── BLOQUE COBROS ──
+        section_div("COBROS (Ingresos)", "💰")
+
+        monto_ventas_ctg = stats.get("monto_ventas_contagram", 0)
+        monto_exacto_cb = cb.get("match_exacto_monto", 0)
+        monto_ident_cb = monto_exacto_cb + cb.get("probable_duda_id_monto", 0)
+        cob_exacta_pct = (monto_exacto_cb / monto_ventas_ctg * 100) if monto_ventas_ctg > 0 else 0
+        cob_total_pct = (monto_ident_cb / monto_ventas_ctg * 100) if monto_ventas_ctg > 0 else 0
+        n_facturas = len(df_det) if not df_det.empty else "N/D"
+
+        if not df_det.empty and "Estado Conciliacion" in df_det.columns:
+            n_conc = len(df_det[df_det["Estado Conciliacion"] == "Conciliada"])
+        else:
+            n_conc = 0
+
+        monto_probable_cb = cb.get("probable_duda_id_monto", 0)
         c1, c2, c3, c4 = st.columns(4)
+        kpi_card("Total Facturado Contagram", format_money(monto_ventas_ctg),
+                 f"{n_facturas} facturas", "neutral", c1)
+        kpi_card("Cobrado Exacto", format_money(monto_exacto_cb),
+                 f"+ {format_money(monto_probable_cb)} probables a verificar", "success", c2)
+        kpi_card("Facturas Conciliadas", f"{n_conc}",
+                 f"de {n_facturas} totales" if isinstance(n_facturas, int) else "Sin datos", "success", c3)
+        kpi_card("% Cobertura Exacta", f"{cob_exacta_pct:.1f}%",
+                 f"Sube a {cob_total_pct:.1f}% con probables",
+                 "success" if cob_exacta_pct >= 80 else "warning" if cob_exacta_pct >= 50 else "danger", c4)
 
-        # 1. Banco
-        with c1:
-            kpi_hero(
-                "🏦", f"{pct_conc}%", "Conciliación Bancaria",
-                f"{stats['match_exacto']} exactos + {stats['probable_dif_cambio']} probables",
-                "success" if pct_conc >= 90 else "warning" if pct_conc >= 70 else "danger",
-            )
-
-        # 2. Contagram
-        total_facturado = df_det["Total Venta"].sum() if not df_det.empty and "Total Venta" in df_det.columns else stats.get("monto_ventas_contagram", 0)
-        with c2:
-            kpi_hero(
-                "📄", format_money(total_facturado), "Total Facturado",
-                f"Ventas: {len(df_det) if not df_det.empty else 0}",
-                "neutral",
-            )
-
-        # 3. Gap
-        gap = stats.get("revenue_gap", 0)
-        with c3:
-            kpi_hero(
-                "💰", format_money(gap), "Revenue Gap",
-                "Dif. Banco vs Contagram",
-                "success" if abs(gap) < 10000 else "danger",
-            )
-
-        # 4. Excepciones
-        with c4:
-            kpi_hero(
-                "⚠️", str(n_exc), "Excepciones Banco",
-                format_money(stats.get("monto_no_conciliado", 0)),
-                "success" if n_exc == 0 else "warning" if n_exc < 10 else "danger",
-            )
+        st.caption("🏦 Movimientos bancarios del período")
+        c1, c2, c3 = st.columns(3)
+        kpi_card("Cobrado en Bancos", format_money(cb.get("monto_total", 0)),
+                 f"{cb.get('total', 0)} movimientos", "neutral", c1)
+        kpi_card("Match Exacto", f"{cb.get('match_exacto', 0)} mov.",
+                 f"({cb.get('match_directo', 0)} dir + {cb.get('match_suma', 0)} suma) — {format_money(monto_exacto_cb)}",
+                 "success", c2)
+        kpi_card("Sin Identificar", f"{cb.get('no_match', 0)} mov.",
+                 f"{format_money(cb.get('no_match_monto', 0))} — Revisar en Excepciones", "danger", c3)
 
         st.markdown("###")
 
-        # Columnas de Graficos
+        # ── BLOQUE PAGOS ──
+        section_div("PAGOS (Egresos)", "🏭")
+
+        monto_ocs_ctg = stats.get("monto_compras_contagram", 0)
+        monto_exacto_pg = pg.get("match_exacto_monto", 0)
+        monto_probable_pg = pg.get("probable_duda_id_monto", 0)
+        monto_ident_pg = monto_exacto_pg + monto_probable_pg
+        cob_exacta_pg_pct = (monto_exacto_pg / monto_ocs_ctg * 100) if monto_ocs_ctg > 0 else 0
+        cob_pg_pct = (monto_ident_pg / monto_ocs_ctg * 100) if monto_ocs_ctg > 0 else 0
+        n_ocs = stats.get("cant_compras_contagram", "N/D")
+
+        c1, c2, c3 = st.columns(3)
+        kpi_card("Total OCs Contagram", format_money(monto_ocs_ctg),
+                 f"{n_ocs} OCs registradas", "neutral", c1)
+        kpi_card("Pagado Exacto", format_money(monto_exacto_pg),
+                 f"+ {format_money(monto_probable_pg)} probables a verificar", "success", c2)
+        kpi_card("% Cobertura Exacta", f"{cob_exacta_pg_pct:.1f}%",
+                 f"Sube a {cob_pg_pct:.1f}% con probables",
+                 "success" if cob_exacta_pg_pct >= 80 else "warning" if cob_exacta_pg_pct >= 50 else "danger", c3)
+
+        st.caption("🏦 Movimientos bancarios del período")
+        c1, c2, c3 = st.columns(3)
+        kpi_card("Pagado en Bancos", format_money(pg.get("monto_total", 0)),
+                 f"{pg.get('total', 0)} pagos", "neutral", c1)
+        kpi_card("Match Exacto Pagos", f"{pg.get('match_exacto', 0)} mov.",
+                 format_money(monto_exacto_pg), "success", c2)
+        kpi_card("Sin Identificar Pagos", f"{pg.get('no_match', 0)} mov.",
+                 f"{format_money(pg.get('no_match_monto', 0))} — Revisar en Excepciones", "danger", c3)
+
+        st.markdown("###")
+
+        # ── BLOQUE GENERAL ──
+        section_div("RESUMEN GENERAL", "📊")
+        c1, c2, c3, c4 = st.columns(4)
+        kpi_hero(
+            "🏦", f"{pct_conc}%", "Conciliación Global",
+            f"{stats.get('match_exacto', 0)} exactos + {stats.get('probable_duda_id', 0)} probables",
+            "success" if pct_conc >= 90 else "warning" if pct_conc >= 70 else "danger",
+            c1,
+        )
+        kpi_hero("📋", str(stats.get("total_movimientos", 0)), "Movimientos Procesados", f"Cobros: {cb.get('total', 0)} | Pagos: {pg.get('total', 0)}", "neutral", c2)
+        kpi_hero(
+            "⚠️", str(n_exc), "Excepciones Pendientes",
+            format_money(stats.get("monto_no_conciliado", 0)),
+            "success" if n_exc == 0 else "warning" if n_exc < 10 else "danger",
+            c3,
+        )
+        kpi_hero("🏛️", format_money(stats.get("monto_gastos_bancarios", 0)), "Gastos Bancarios", f"{stats.get('gastos_bancarios', 0)} movimientos", "neutral", c4)
+
+        revenue_gap_real = monto_ventas_ctg - monto_ident_cb
+        st.markdown("###")
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            color_gap = "success" if abs(revenue_gap_real) < 10000 else "warning" if abs(revenue_gap_real) < 50000 else "danger"
+            kpi_card("Revenue Gap", format_money(revenue_gap_real),
+                     "Facturado sin cobro identificado en banco", color_gap, c2)
+
+        st.markdown("###")
+
         col_g1, col_g2 = st.columns(2)
         with col_g1:
-             # Dona: Distribucion de matching (Banco)
             labels = ["Match Exacto", "Duda de ID", "Dif. Cambio", "Sin Match", "Gastos"]
             values = [stats.get("match_exacto", 0), stats.get("probable_duda_id", 0),
                       stats.get("probable_dif_cambio", 0), stats.get("no_match", 0),
@@ -460,50 +510,26 @@ if data_ready:
             filtered = [(l, v) for l, v in zip(labels, values) if v > 0]
             if filtered:
                 fl, fv = zip(*filtered)
-                # Colores
                 colors_map = {
                     "Match Exacto": "#0D7C3D", "Duda de ID": "#D4760A", "Dif. Cambio": "#F59E0B",
                     "Sin Match": "#E30613", "Gastos": "#888"
                 }
                 cols = [colors_map.get(l, "#666") for l in fl]
-                donut_chart(list(fl), list(fv), "Distribución Conciliación (Banco)", cols)
-        
+                donut_chart(list(fl), list(fv), "Distribución Conciliación", cols)
+
         with col_g2:
-            # Grafico adaptable: Si hay 1 solo banco, mostrar desglose por tipo. Si hay >1, por banco.
             por_banco = stats.get("por_banco", {})
             bancos_activos = [b for b, d in por_banco.items() if d["movimientos"] > 0]
-            
             if len(bancos_activos) > 1:
-                # Barras por banco
                 montos = [por_banco[b].get("monto_creditos", 0) + por_banco[b].get("monto_debitos", 0) for b in bancos_activos]
                 horizontal_bar_chart(bancos_activos, montos, "Monto Total por Banco", "#1A1A1A")
             else:
-                # Desglose por tipo de movimiento (Credito / Debito)
-                cb = stats.get("cobros", {})
-                pg = stats.get("pagos_prov", {})
-                gastos = stats.get("monto_gastos_bancarios", 0)
+                gastos_monto = stats.get("monto_gastos_bancarios", 0)
                 lbls = ["Cobros (Créditos)", "Pagos (Débitos)", "Gastos Bancarios"]
-                vals = [cb.get("monto_total", 0), pg.get("monto_total", 0), gastos]
+                vals = [cb.get("monto_total", 0), pg.get("monto_total", 0), gastos_monto]
                 horizontal_bar_chart(lbls, vals, "Volumen por Tipo de Movimiento", "#1A1A1A")
 
-        # DESGLOSE CONTAGRAM (Mini)
-        if not df_det.empty:
-            st.markdown("###")
-            section_div("Contagram", "📈")
-            total_cobrado = df_det["Cobrado"].sum() if "Cobrado" in df_det.columns else 0
-            pendiente = total_facturado - total_cobrado
-            conciliado_ctg = df_det[df_det["Estado Conciliacion"] == "Conciliada"]["Cobrado"].sum() if "Cobrado" in df_det.columns else 0
-            n_conciliadas = len(df_det[df_det["Estado Conciliacion"] == "Conciliada"])
-            sin_match_ctg = len(df_det[df_det["Estado Conciliacion"] == "Sin Match"])
-            
-            c1, c2, c3, c4 = st.columns(4)
-            kpi_card("Facturas Cargadas", f"{len(df_det)}", format_money(total_facturado), "neutral", c1)
-            kpi_card("Total Cobrado", format_money(total_cobrado), f"Pendiente: {format_money(pendiente)}", "neutral", c2)
-            kpi_card("Conciliado en Banco", format_money(conciliado_ctg), f"{n_conciliadas} facturas identificadas", "success", c3)
-            col_status = "success" if sin_match_ctg == 0 else "danger"
-            kpi_card("Facturas Sin Match", f"{sin_match_ctg}", "No halladas en Banco", col_status, c4)
-            
-        st.info("👈 Usa el **menú lateral** para navegar a las vistas de detalle (Banco, Contagram, Excepciones).")
+        st.info("👈 Usa el **menú lateral** para navegar a: **Cobros**, **Pagos**, **Resumen**, **Excepciones**, **Exportar**.")
 
 elif modo == "Manual (subir archivos)":
     st.info("Suba los archivos requeridos en las pestañas de arriba para comenzar.")
@@ -512,45 +538,6 @@ else:
 
 
 # ═══════════════════════════════════════════════════════
-# ASISTENTE DE CONCILIACION (Gemini Chat)
+# ASISTENTE FINANCIERO (Groq + Llama 3.3 70B)
 # ═══════════════════════════════════════════════════════
-for msg in st.session_state.get("chat_history", []):
-    role = "user" if msg["role"] == "user" else "assistant"
-    with st.chat_message(role):
-        st.markdown(msg["parts"][0]["text"])
-
-if prompt := st.chat_input("Preguntale al asistente sobre la conciliacion..."):
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
-    st.session_state["chat_history"].append(
-        {"role": "user", "parts": [{"text": prompt}]}
-    )
-
-    _gkey = None
-    try:
-        _gkey = st.secrets["google"]["api_key"]
-    except Exception:
-        _gkey = os.environ.get("GOOGLE_API_KEY")
-
-    if _gkey and "stats" in st.session_state:
-        try:
-            from src.chatbot import crear_cliente, chat_responder
-            if "gemini_client" not in st.session_state:
-                st.session_state["gemini_client"] = crear_cliente(_gkey)
-            _resp = chat_responder(
-                st.session_state["gemini_client"],
-                st.session_state["stats"],
-                st.session_state["chat_history"][:-1],
-                prompt,
-            )
-        except Exception as e:
-            _resp = f"Error al consultar el asistente: {e}"
-    elif not _gkey:
-        _resp = "Configura tu API key de Google Gemini en `.streamlit/secrets.toml` para habilitar el asistente."
-    else:
-        _resp = "Ejecuta la conciliacion primero para que pueda responder preguntas sobre los resultados."
-
-    st.session_state["chat_history"].append(
-        {"role": "model", "parts": [{"text": _resp}]}
-    )
-    st.rerun()
+render_chatbot_flotante()

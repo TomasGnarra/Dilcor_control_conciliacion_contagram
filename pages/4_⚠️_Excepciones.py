@@ -201,3 +201,6 @@ with tab_ctg:
             
     else:
         st.success("✅ No hay facturas pendientes en Contagram.")
+
+from src.chatbot import render_chatbot_flotante
+render_chatbot_flotante()
