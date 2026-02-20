@@ -52,66 +52,57 @@ with st.sidebar:
     st.markdown("**Bancos soportados**")
     st.caption("Banco Galicia | Banco Santander | Mercado Pago")
 
-    # --- Umbrales configurables ---
+    # --- Precision del Matching ---
     st.markdown("---")
-    with st.expander("Ajustar umbrales de matching"):
-        niveles_umbral = {
-            1: {
-                "etiqueta": "Muy estricto",
-                "tol_exacto_pct": 0.2, "tol_probable_pct": 0.5,
-                "tol_probable_abs": 250, "umbral_id_exacto_pct": 92,
-                "umbral_id_probable_pct": 70,
-                "descripcion": "Maxima exactitud: menos falsos positivos, pero mas casos pendientes.",
-            },
-            2: {
-                "etiqueta": "Estricto",
-                "tol_exacto_pct": 0.3, "tol_probable_pct": 0.8,
-                "tol_probable_abs": 300, "umbral_id_exacto_pct": 88,
-                "umbral_id_probable_pct": 65,
-                "descripcion": "Conservador: exige bastante similitud y tolera poca diferencia de monto.",
-            },
-            3: {
-                "etiqueta": "Balanceado (recomendado)",
-                "tol_exacto_pct": 0.5, "tol_probable_pct": 1.0,
-                "tol_probable_abs": 500, "umbral_id_exacto_pct": 80,
-                "umbral_id_probable_pct": 55,
-                "descripcion": "Equilibrio entre precision y cobertura para operacion diaria.",
-            },
-            4: {
-                "etiqueta": "Flexible",
-                "tol_exacto_pct": 0.8, "tol_probable_pct": 1.5,
-                "tol_probable_abs": 800, "umbral_id_exacto_pct": 77,
-                "umbral_id_probable_pct": 50,
-                "descripcion": "Acepta mas variaciones: reduce pendientes, pero requiere revision.",
-            },
-            5: {
-                "etiqueta": "Muy flexible",
-                "tol_exacto_pct": 1.0, "tol_probable_pct": 2.0,
-                "tol_probable_abs": 1000, "umbral_id_exacto_pct": 75,
-                "umbral_id_probable_pct": 45,
-                "descripcion": "Maxima cobertura: mas coincidencias con mayor control manual.",
-            },
-        }
+    st.markdown("##### Precision del Matching")
 
-        nivel_umbral = st.slider(
-            "Filtro deslizante de umbral", min_value=1, max_value=5, value=3, step=1,
-            help="Izquierda: mas estricto. Derecha: mas flexible.",
-        )
-        cfg_umbral = niveles_umbral[nivel_umbral]
+    _niveles = {
+        "Muy estricto": {
+            "tol_exacto_pct": 0.2, "tol_probable_pct": 0.5, "tol_probable_abs": 250,
+            "umbral_id_exacto_pct": 92, "umbral_id_probable_pct": 70,
+            "desc": "Maxima exactitud, menos falsos positivos.",
+        },
+        "Estricto": {
+            "tol_exacto_pct": 0.3, "tol_probable_pct": 0.8, "tol_probable_abs": 300,
+            "umbral_id_exacto_pct": 88, "umbral_id_probable_pct": 65,
+            "desc": "Conservador, tolera poca diferencia de monto.",
+        },
+        "Balanceado (recomendado)": {
+            "tol_exacto_pct": 0.5, "tol_probable_pct": 1.0, "tol_probable_abs": 500,
+            "umbral_id_exacto_pct": 80, "umbral_id_probable_pct": 55,
+            "desc": "Equilibrio entre precision y cobertura.",
+        },
+        "Flexible": {
+            "tol_exacto_pct": 0.8, "tol_probable_pct": 1.5, "tol_probable_abs": 800,
+            "umbral_id_exacto_pct": 77, "umbral_id_probable_pct": 50,
+            "desc": "Mas cobertura, acepta mas variaciones.",
+        },
+        "Muy flexible": {
+            "tol_exacto_pct": 1.0, "tol_probable_pct": 2.0, "tol_probable_abs": 1000,
+            "umbral_id_exacto_pct": 75, "umbral_id_probable_pct": 45,
+            "desc": "Maxima cobertura, requiere revision manual.",
+        },
+    }
 
-        st.caption("1 = Muy estricto · 3 = Balanceado · 5 = Muy flexible")
+    _nivel_sel = st.selectbox(
+        "Nivel de tolerancia",
+        list(_niveles.keys()),
+        index=2,
+        help="Controla que tan estricto es el cruce entre banco y Contagram.",
+    )
+    cfg_umbral = _niveles[_nivel_sel]
 
-        st.markdown('<div class="threshold-panel">', unsafe_allow_html=True)
-        st.markdown(f'<div class="threshold-title">Nivel actual: {cfg_umbral["etiqueta"]}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="threshold-help">{cfg_umbral["descripcion"]}</div>', unsafe_allow_html=True)
-        st.caption("Si lo moves a la izquierda: menos matches y mas precision. A la derecha: mas matches y mas revision manual.")
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="threshold-panel">'
+        f'<div class="threshold-help">{cfg_umbral["desc"]}</div>'
+        f'</div>', unsafe_allow_html=True,
+    )
 
-        tol_exacto = cfg_umbral["tol_exacto_pct"] / 100
-        tol_probable_pct = cfg_umbral["tol_probable_pct"] / 100
-        tol_probable_abs = cfg_umbral["tol_probable_abs"]
-        umbral_id_exacto = cfg_umbral["umbral_id_exacto_pct"] / 100
-        umbral_id_probable = cfg_umbral["umbral_id_probable_pct"] / 100
+    tol_exacto = cfg_umbral["tol_exacto_pct"] / 100
+    tol_probable_pct = cfg_umbral["tol_probable_pct"] / 100
+    tol_probable_abs = cfg_umbral["tol_probable_abs"]
+    umbral_id_exacto = cfg_umbral["umbral_id_exacto_pct"] / 100
+    umbral_id_probable = cfg_umbral["umbral_id_probable_pct"] / 100
 
     match_config_override = {
         "tolerancia_monto_exacto_pct": tol_exacto,

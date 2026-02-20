@@ -356,7 +356,8 @@ def build_column_config(df):
 
     _money_patterns = [
         "monto", "cobrado", "pagado", "importe", "saldo",
-        "diferencia", "debe", "haber",
+        "diferencia", "debe", "haber", "total venta", "total_venta",
+        "revenue gap", "payment gap",
     ]
     _confidence_cols = {
         "Confianza %", "Confianza", "confianza", "conciliation_confidence",
@@ -368,12 +369,19 @@ def build_column_config(df):
         "tipo_match_monto", "tipo_match_id",
         "Cliente/Nombre Extraido", "Cliente Contagram",
         "Nombre Banco Extraido",
+        "Estado Conciliacion", "Estado", "Medio de Cobro", "medio_cobro",
+        "Razon", "conciliation_reason",
     }
     _count_cols = {
         "Cant Facturas", "facturas_count",
     }
     _date_cols = {
-        "Fecha", "fecha", "fecha_vto",
+        "Fecha", "fecha", "fecha_vto", "Fecha Emision", "fecha_emision",
+    }
+    _bool_cols = {
+        "Contiene Santander", "Contiene Caja Grande",
+        "contiene_santander", "contiene_caja_grande",
+        "es_santander_puro", "es_pago_unico",
     }
 
     for col in df.columns:
@@ -387,6 +395,8 @@ def build_column_config(df):
                 min_value=0,
                 max_value=100,
             )
+        elif col in _bool_cols:
+            config[col] = st.column_config.CheckboxColumn(col)
         elif any(p in col_lower for p in _money_patterns):
             config[col] = st.column_config.NumberColumn(
                 col,

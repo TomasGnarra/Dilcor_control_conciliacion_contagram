@@ -59,11 +59,22 @@ kpi_hero("💰", format_money(monto_ident), "Cobrado Identificado",
          f"Exacto {format_money(monto_exacto)} + probable",
          "success" if cob_total_pct >= 80 else "warning", c2)
 kpi_hero("✅", f"{n_conc}", "Facturas Conciliadas",
-         f"de {n_total_f} ({(n_conc/n_total_f*100):.1f}%)" if n_total_f > 0 else "Sin datos",
+         f"{(n_conc/n_total_f*100):.1f}% por cantidad — de {n_total_f} totales" if n_total_f > 0 else "Sin datos",
          "success" if n_total_f > 0 and n_conc / n_total_f >= 0.8 else "warning", c3)
-kpi_hero("🏦", f"{cob_total_pct:.1f}%", "% Cobertura Total",
-         f"{pct_conc}% conciliación global",
+kpi_hero("🏦", f"{cob_total_pct:.1f}%", "% Cobertura del Monto",
+         f"{format_money(monto_ident)} de {format_money(monto_ventas)} facturado",
          "success" if cob_total_pct >= 80 else "warning" if cob_total_pct >= 50 else "danger", c4)
+
+# Nota: explicar diferencia count vs monto
+if n_total_f > 0 and monto_ventas > 0:
+    pct_cnt = round(n_conc / n_total_f * 100, 1)
+    if abs(pct_cnt - cob_total_pct) > 2:
+        n_pend = n_total_f - n_conc
+        st.info(
+            f"ℹ️ **¿Por qué {pct_cnt}% de facturas pero {cob_total_pct:.1f}% del monto?** "
+            f"Las {n_conc} facturas conciliadas tienen mayor valor unitario que las {n_pend} pendientes. "
+            f"El % de facturas cuenta unidades, el % de cobertura mide pesos. Ambos son correctos y complementarios."
+        )
 
 # Fila 2 — Banco (contexto)
 st.caption("🏦 Banco")
